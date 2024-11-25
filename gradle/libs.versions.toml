@@ -1,0 +1,61 @@
+[versions]
+arrow = "2.0.0-alpha.3"
+com-google-auto-service = "1.1.1"
+junit = "5.11.0-RC1"
+koin = "4.0.0-RC1"
+kotest = "5.9.1"
+# @pin
+kotlin = "2.0.0"
+kotlinxCoroutine = "1.9.0-RC"
+
+[plugins]
+dokka = "org.jetbrains.dokka:1.9.20"
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+node = "com.github.node-gradle.node:7.0.2"
+versionCatalogUpdate = "nl.littlerobots.version-catalog-update:0.8.4"
+versions = "com.github.ben-manes.versions:0.51.0"
+
+[libraries]
+arrow-core = { module = "io.arrow-kt:arrow-core", version.ref = "arrow" }
+autoService = { module = "com.google.auto.service:auto-service", version.ref = "com-google-auto-service" }
+autoServiceAnnotation = { module = "com.google.auto.service:auto-service-annotations", version.ref = "com-google-auto-service" }
+chronicle-queue = "net.openhft:chronicle-queue:5.26ea5"
+config4k = "io.github.config4k:config4k:0.7.0"
+fastutil = "it.unimi.dsi:fastutil:8.5.14"
+guava = "com.google.guava:guava:32.1.3-jre"
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
+junit-kotest = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
+junit-platform-launcher = "org.junit.platform:junit-platform-launcher:1.11.0-RC1"
+koin = { module = "io.insert-koin:koin-core", version.ref = "koin" }
+kotlin-bom = { module = "org.jetbrains.kotlin:kotlin-bom", version.ref = "kotlin" }
+kotlin-logging = "io.github.oshai:kotlin-logging:7.0.0"
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlinx-coroutine = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm", version.ref = "kotlinxCoroutine" }
+kotlinx-coroutineTest = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutine" }
+kotlinx-serialization-json = "org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1"
+# @pin
+logback = "ch.qos.logback:logback-classic:1.4.12"
+mockk = "io.mockk:mockk:1.13.12"
+picocli = "info.picocli:picocli:4.7.6"
+slf4j-api = "org.slf4j:slf4j-api:2.1.0-alpha1"
+
+[bundles]
+backend-main = [
+    "config4k",
+    "koin",
+    "kotlin-logging",
+    "kotlinx-serialization-json",
+]
+backend-test = [
+    "junit-jupiter",
+    "junit-kotest",
+    "kotlin-test",
+    "kotlinx-coroutineTest",
+    "mockk",
+]
+backend-test-runtime = [
+    "junit-jupiter-engine",
+    "junit-platform-launcher",
+]
