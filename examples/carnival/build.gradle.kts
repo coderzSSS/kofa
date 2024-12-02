@@ -1,3 +1,3 @@
 dependencies {
-    implementation(project(":platform:platform-api"))
+    implementation(rootProject.libs.kotlinx.datetime)
 }

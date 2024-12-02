@@ -12,9 +12,9 @@ plugins {
 
 allprojects {
     repositories {
+        maven { url = uri("https://repo.huaweicloud.com/repository/maven") }
         maven { url = uri("https://maven.aliyun.com/repository/central") }
         maven { url = uri("https://maven.aliyun.com/repository/public") }
-        mavenLocal()
         mavenCentral()
     }
 }
@@ -40,6 +40,7 @@ configure(kotlinProjects) {
 
     dependencies {
 //        "implementation"(enforcedPlatform(rootProject.libs.kotlin.bom))
+        "implementation"(rootProject.libs.kotlinx.datetime)
         "implementation"(rootProject.libs.kotlinx.serialization.json)
         "implementation"(rootProject.libs.kotlinx.coroutine)
         "implementation"(kotlin("stdlib"))
@@ -75,7 +76,7 @@ configure(kotlinProjects) {
     }
 
     configure<org.jetbrains.kotlin.gradle.dsl.KotlinTopLevelExtension> {
-        jvmToolchain(21)
+        jvmToolchain(17)
     }
 }
 

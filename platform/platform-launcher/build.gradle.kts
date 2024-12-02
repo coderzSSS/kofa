@@ -1,7 +1,3 @@
-plugins {
-    kotlin("kapt")
-}
-
 dependencies {
     implementation(project(":platform:platform-core"))
     implementation(rootProject.libs.kotlinx.coroutine)

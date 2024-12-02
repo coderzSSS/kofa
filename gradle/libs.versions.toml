@@ -1,5 +1,5 @@
 [versions]
-arrow = "2.0.0-alpha.3"
+arrow = "2.0.0-beta.3"
 com-google-auto-service = "1.1.1"
 junit = "5.11.0-RC1"
 koin = "4.0.0-RC1"
@@ -32,6 +32,7 @@ koin = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 kotlin-bom = { module = "org.jetbrains.kotlin:kotlin-bom", version.ref = "kotlin" }
 kotlin-logging = "io.github.oshai:kotlin-logging:7.0.0"
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version = "0.6.1" }
 kotlinx-coroutine = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm", version.ref = "kotlinxCoroutine" }
 kotlinx-coroutineTest = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutine" }
 kotlinx-serialization-json = "org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1"
