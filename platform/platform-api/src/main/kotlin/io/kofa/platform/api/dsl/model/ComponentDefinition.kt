@@ -8,7 +8,8 @@ import io.kofa.platform.api.util.EventDispatcher
 import kotlin.reflect.KClass
 
 data class ComponentDefinition<E: Any>(
-    val name: String,
+    val id: String,
+    val type: String,
     val description: String?,
     val modules: List<ComponentModuleDeclaration>,
     val eventDispatchers: List<EventDispatcher<out E>>,

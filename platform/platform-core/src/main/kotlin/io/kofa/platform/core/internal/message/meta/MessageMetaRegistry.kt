@@ -21,4 +21,6 @@ internal object MessageMetaRegistry {
             }
         }
     }
+
+    fun getDomainClass(eventType: Int) = messageTypeByDomainClass.inverse()[eventType]
 }

@@ -1,8 +1,11 @@
 package io.kofa.platform.core.internal.controller
 
 import io.kofa.platform.api.logger.logger
+import io.kofa.platform.api.util.EventDispatcher
 import io.kofa.platform.core.internal.component.Component
 import io.kofa.platform.core.internal.component.ComponentConfig
+import io.kofa.platform.core.internal.component.ComponentLoader
+import io.kofa.platform.core.internal.service.EventBusService
 import io.kofa.platform.core.internal.thread.eventloop.EventLoop
 import io.kofa.platform.core.internal.thread.eventloop.NamedTask
 import io.kofa.platform.core.internal.thread.policy.ShutdownPriority
@@ -12,6 +15,7 @@ import java.util.concurrent.TimeoutException
 
 internal class ApplicationController(private val koin: Koin) {
     private val eventLoop: EventLoop = koin.get()
+    private val components = mutableListOf<Component>()
 
     fun configure(components: Collection<ComponentConfig>) {
         val componentMap = components.groupBy {
@@ -40,9 +44,13 @@ internal class ApplicationController(private val koin: Koin) {
                     "multiple instance not allowed for component ${it.key}"
                 }
             }
-
-            it.value.forEach(this::doConfigure)
         }
+
+        this.components.addAll(
+            ComponentLoader(koin) { type ->
+                requireNotNull(componentMap[type]) { "no component config found for type $type" }
+            }.loadUserComponents()
+        )
     }
 
     private fun initEventBusService(): EventBusService {
@@ -54,15 +62,16 @@ internal class ApplicationController(private val koin: Koin) {
         return eventBusService
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun start() {
         val busService = initEventBusService()
 
         // init components, platform component will be initialized first
-        ComponentRegistry.allComponents.forEach {
+        this.components.forEach {
             initComponent(it)
 
-            if (it is EventDispatcher) {
-                busService.registerHandler(it)
+            if (it is EventDispatcher<*>) {
+                busService.addDispatcher(it as EventDispatcher<Any>)
             }
         }
 
@@ -91,24 +100,6 @@ internal class ApplicationController(private val koin: Koin) {
                     logger.warn(it) { "EventLoop thread terminated on exception" }
                 }
             }
-        }
-    }
-
-    private fun doConfigure(config: ComponentConfig) {
-        logger.info { "configuring component $config" }
-        val providers = ComponentRegistry.findComponentFactories(config)
-
-        check(providers.isNotEmpty()) {
-            "no component provider found for type ${config.type}\n $config"
-        }
-
-        check(providers.size == 1) {
-            "multiple component provider found for type ${config.type}, providers: $providers"
-        }
-
-        providers.forEach {
-            val component = it.create(config, koin)
-            ComponentRegistry.register(component)
         }
     }
 

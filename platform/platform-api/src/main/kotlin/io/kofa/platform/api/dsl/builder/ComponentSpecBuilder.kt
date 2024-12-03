@@ -26,7 +26,7 @@ class ComponentSpecBuilder<T : Any>(val injectContextFactory: () -> InjectContex
 
     private var errorHandler: Option<(Throwable) -> Unit> = None
 
-    override val injectContext: InjectContext get() = injectContextFactory()
+    override val injectContext: InjectContext by lazy { injectContextFactory() }
 
     override fun install(vararg modules: ComponentModuleDeclaration) {
         this.modules.addAll(modules)
@@ -53,11 +53,12 @@ class ComponentSpecBuilder<T : Any>(val injectContextFactory: () -> InjectContex
         errorHandler = Some(action)
     }
 
-    internal fun build(id: String): Either<String, ComponentDefinition<T>> {
+    internal fun build(id: String, type: String): Either<String, ComponentDefinition<T>> {
         return either {
             ensure(eventHandlers.isNotEmpty()) { "no event handler specified." }
             ComponentDefinition(
                 id,
+                type,
                 description,
                 modules,
                 dispatchers.toList(),
