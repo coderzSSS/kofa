@@ -1,4 +1,4 @@
-package io.kofa.platform.core.internal.message.meta
+package io.kofa.platform.core.internal.service.meta
 
 internal data class MessageMeta(
     val msgType: Int,

@@ -1,4 +1,4 @@
-package io.kofa.platform.core.internal.component
+package io.kofa.platform.core.internal.component.config
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.kofa.platform.api.config.Config

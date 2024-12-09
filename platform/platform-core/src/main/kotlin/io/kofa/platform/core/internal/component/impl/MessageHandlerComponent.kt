@@ -5,7 +5,7 @@ import arrow.core.Option
 import io.kofa.platform.api.inject.ComponentModuleDeclaration
 import io.kofa.platform.api.util.EventContext
 import io.kofa.platform.api.util.EventDispatcher
-import io.kofa.platform.core.internal.component.ComponentConfig
+import io.kofa.platform.core.internal.component.config.ComponentConfig
 import org.koin.core.Koin
 
 internal class MessageHandlerComponent<E : Any>(
@@ -13,15 +13,15 @@ internal class MessageHandlerComponent<E : Any>(
     componentConfig: ComponentConfig,
     modules: List<ComponentModuleDeclaration>,
     private val handlers: List<EventDispatcher<E>>,
-    private val startAction: Option<() -> Unit> = None,
-    private val stopAction: Option<() -> Unit> = None,
+    private val startAction: Option<suspend () -> Unit> = None,
+    private val stopAction: Option<suspend () -> Unit> = None,
     private val errorHandler: Option<(Throwable) -> Unit> = None
 ) : ScopedComponent(componentConfig, modules, koin), EventDispatcher<E> {
     override fun isInterested(eventType: Int): Boolean {
         return handlers.any { it.isInterested(eventType) }
     }
 
-    override fun dispatch(eventType: Int, ctx: EventContext, event: E) {
+    override suspend fun dispatch(eventType: Int, ctx: EventContext, event: E) {
         handlers.filter { it.isInterested(eventType) }.forEach {
             runCatching {
                 it.dispatch(eventType, ctx, event)

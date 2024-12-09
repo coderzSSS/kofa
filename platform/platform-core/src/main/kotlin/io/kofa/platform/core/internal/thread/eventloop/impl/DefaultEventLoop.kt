@@ -4,25 +4,14 @@ import com.google.common.base.Throwables
 import com.google.common.collect.LinkedListMultimap
 import com.google.common.collect.Multimap
 import com.google.common.collect.Multimaps
-import io.kofa.platform.api.logger.Logger
+import io.kofa.platform.api.logger.logger
+import io.kofa.platform.core.internal.thread.eventloop.*
 import io.kofa.platform.core.internal.thread.eventloop.EventLoop
-import io.kofa.platform.core.internal.thread.eventloop.InvocationContext
-import io.kofa.platform.core.internal.thread.eventloop.IterableTask
-import io.kofa.platform.core.internal.thread.eventloop.NamedTask
-import io.kofa.platform.core.internal.thread.eventloop.OneOffTask
 import io.kofa.platform.core.internal.thread.eventloop.config.EventLoopConfig
-import io.kofa.platform.core.internal.thread.eventloop.config.executionPolicy
 import io.kofa.platform.core.internal.thread.policy.PullPriority
 import io.kofa.platform.core.internal.thread.policy.ShutdownPriority
 import io.kofa.platform.core.internal.thread.realtime.ThreadManager
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.*
 import java.util.Queue
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.ExecutionException
@@ -33,7 +22,6 @@ import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
 internal class DefaultEventLoop(
-    private val logger: Logger,
     private val config: EventLoopConfig,
     private val invocationContext: InvocationContext,
     private val realtimeManager: ThreadManager
@@ -57,6 +45,10 @@ internal class DefaultEventLoop(
 
     @Volatile
     private var lastException: Throwable? = null
+
+    override fun coroutineScope(): CoroutineScope {
+        return eventLoopScope
+    }
 
     private suspend fun execute() {
         try {

@@ -10,24 +10,10 @@ import io.kofa.platform.api.config.extract
 
 internal data class EventLoopConfig(
     val shutdownTimeoutSeconds: Long,
-    val exitOnException: Boolean = true,
-    val executionPolicyType: String,
-    val config: Config,
-    val threadRole: String? = "EventLoop"
+    val exitOnException: Boolean,
+    val executionPolicy: ExecutionPolicy,
+    val threadRole: String?
 )
-
-internal val EventLoopConfig.executionPolicy: ExecutionPolicy
-    get() {
-        return when (executionPolicyType.lowercase()) {
-            "busy" -> Busy
-            "wait" -> {
-                val c: WaitExecutionPolicyConfig = config.extract()
-                Wait(c.sleepCycles, c.durationMillis.toDuration(DurationUnit.MILLISECONDS))
-            }
-
-            else -> throw IllegalArgumentException("unknown execution policy $executionPolicyType")
-        }
-    }
 
 internal data class WaitExecutionPolicyConfig(
     val sleepCycles: Long,

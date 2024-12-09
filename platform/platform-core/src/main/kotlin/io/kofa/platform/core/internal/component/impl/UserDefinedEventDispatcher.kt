@@ -3,7 +3,7 @@ package io.kofa.platform.core.internal.component.impl
 import io.kofa.platform.api.dsl.model.ComponentDefinition
 import io.kofa.platform.api.util.EventContext
 import io.kofa.platform.api.util.EventDispatcher
-import io.kofa.platform.core.internal.message.meta.MessageMetaRegistry
+import io.kofa.platform.core.internal.service.meta.MessageMetaRegistry
 
 class UserDefinedEventDispatcher<T : Any>(
     private val componentDefinition: ComponentDefinition<T>
@@ -14,7 +14,7 @@ class UserDefinedEventDispatcher<T : Any>(
                     ?.let { clazz -> componentDefinition.eventHandlers.containsKey(clazz) } == true
     }
 
-    override fun dispatch(eventType: Int, ctx: EventContext, event: T) {
+    override suspend fun dispatch(eventType: Int, ctx: EventContext, event: T) {
         componentDefinition.eventDispatchers.filter { dispatcher -> dispatcher.isInterested(eventType) }
             .map { dispatcher -> dispatcher as EventDispatcher<T> }
             .forEach { dispatcher -> dispatcher.dispatch(eventType, ctx, event) }

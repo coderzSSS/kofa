@@ -54,3 +54,5 @@ inline fun <reified T : Any> Config.extract(path: String? = null): T {
 
 inline fun <reified T : Any> Config.extractOrNull(path: String) = getOrNull<T>(path)
 
+inline fun <reified T : Any> Config.getOrDefault(path: String, value: T) = getOrNull<T>(path) ?: value
+

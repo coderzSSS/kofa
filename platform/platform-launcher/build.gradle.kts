@@ -10,4 +10,5 @@ dependencies {
     implementation(rootProject.libs.arrow.core) {
         exclude("org.jetbrains.kotlin")
     }
+
 }

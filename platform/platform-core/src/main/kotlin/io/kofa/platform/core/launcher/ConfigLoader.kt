@@ -1,13 +1,14 @@
-package io.kofa.platform.core.internal.config
+package io.kofa.platform.core.launcher
 
 import com.typesafe.config.ConfigFactory
 import io.kofa.platform.api.config.Config
+import io.kofa.platform.core.internal.config.TypeSafeConfig
 import java.io.File
 
 object ConfigLoader {
-    fun fromFile(vararg file: String): Config {
+    fun fromFile(files: Collection<String>): Config {
         var tempConfig: com.typesafe.config.Config? = null
-        for (name in file) {
+        for (name in files) {
             val f = File(name)
             val c = if (f.exists() && f.isFile) {
                 ConfigFactory.parseFile(f)

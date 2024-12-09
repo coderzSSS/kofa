@@ -3,6 +3,8 @@ package io.kofa.platform.core.internal.component
 import io.kofa.platform.api.dsl.BusinessDeclaration
 import io.kofa.platform.api.dsl.model.ComponentDefinition
 import io.kofa.platform.api.inject.InjectContext
+import io.kofa.platform.core.internal.component.config.ComponentConfig
+import io.kofa.platform.core.internal.component.config.source
 import io.kofa.platform.core.internal.component.impl.DefaultComponentFactory
 import io.kofa.platform.core.internal.component.impl.ScopedComponent
 import org.koin.core.Koin
@@ -16,7 +18,7 @@ internal class ComponentLoader(
     private val componentMetaById = mutableMapOf<String, ComponentDefinition<*>>()
     private val componentById = mutableMapOf<String, ScopedComponent>()
 
-    fun loadUserComponents(): List<Component> {
+    fun loadComponents(): List<Component> {
         ServiceLoader.load(BusinessDeclaration::class.java).flatMap { businessDeclaration ->
             businessDeclaration.getBusinessDeclaration(this::getInjectContext).components
         }.forEach { componentDefinition ->
@@ -43,7 +45,7 @@ internal class ComponentLoader(
         return getLoadedComponents()
     }
 
-    fun getLoadedComponents(): List<Component> = componentById.values.toList()
+    fun getLoadedComponents(): List<Component> = getSystemComponents() + componentById.values.toList()
 
     private fun getInjectContext(componentType: String): Map<String, () -> InjectContext> {
         return componentConfigProvider(componentType).associateBy(
@@ -54,4 +56,8 @@ internal class ComponentLoader(
 
     private fun getComponentById(componentId: String) =
         requireNotNull(componentById[componentId]) { "no component found for $componentId" }
+
+    private fun getSystemComponents(): List<PlatformComponent> {
+        return listOf()
+    }
 }

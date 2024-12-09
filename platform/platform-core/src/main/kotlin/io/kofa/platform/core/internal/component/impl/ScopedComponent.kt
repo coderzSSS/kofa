@@ -4,9 +4,9 @@ import io.kofa.platform.api.inject.ComponentModuleDeclaration
 import io.kofa.platform.api.inject.InjectContext
 import io.kofa.platform.api.logger.Logger
 import io.kofa.platform.core.internal.component.Component
-import io.kofa.platform.core.internal.component.ComponentConfig
-import io.kofa.platform.core.internal.component.logger
-import io.kofa.platform.core.internal.component.source
+import io.kofa.platform.core.internal.component.config.ComponentConfig
+import io.kofa.platform.core.internal.component.config.logger
+import io.kofa.platform.core.internal.component.config.source
 import org.koin.core.Koin
 import org.koin.core.component.KoinScopeComponent
 import org.koin.core.qualifier.named

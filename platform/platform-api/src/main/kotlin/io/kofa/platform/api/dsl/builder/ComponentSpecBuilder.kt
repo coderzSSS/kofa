@@ -20,9 +20,9 @@ class ComponentSpecBuilder<T : Any>(val injectContextFactory: () -> InjectContex
     private val modules: MutableList<ComponentModuleDeclaration> = mutableListOf()
     private val dispatchers: MutableSet<EventDispatcher<out T>> = mutableSetOf()
 
-    private val eventHandlers: MutableMap<KClass<out T>, EventContext.(T) -> Unit> = mutableMapOf()
-    private var startAction: Option<() -> Unit> = None
-    private var stopAction: Option<() -> Unit> = None
+    private val eventHandlers: MutableMap<KClass<out T>, suspend EventContext.(T) -> Unit> = mutableMapOf()
+    private var startAction: Option<suspend () -> Unit> = None
+    private var stopAction: Option<suspend () -> Unit> = None
 
     private var errorHandler: Option<(Throwable) -> Unit> = None
 
@@ -37,15 +37,15 @@ class ComponentSpecBuilder<T : Any>(val injectContextFactory: () -> InjectContex
     }
 
     @Suppress("UNCHECKED_CAST")
-    override fun <E : T> onEvent(eventClazz: KClass<E>, handler: EventContext.(E) -> Unit) {
-        this.eventHandlers.putIfAbsent(eventClazz, handler as EventContext.(T) -> Unit)
+    override fun <E : T> onEvent(eventClazz: KClass<E>, handler: suspend EventContext.(E) -> Unit) {
+        this.eventHandlers.putIfAbsent(eventClazz, handler as suspend EventContext.(T) -> Unit)
     }
 
-    override fun onStart(action: () -> Unit) {
+    override fun onStart(action: suspend () -> Unit) {
         startAction = Some(action)
     }
 
-    override fun onStop(action: () -> Unit) {
+    override fun onStop(action: suspend () -> Unit) {
         stopAction = Some(action)
     }
 
@@ -57,15 +57,15 @@ class ComponentSpecBuilder<T : Any>(val injectContextFactory: () -> InjectContex
         return either {
             ensure(eventHandlers.isNotEmpty()) { "no event handler specified." }
             ComponentDefinition(
-                id,
-                type,
-                description,
-                modules,
-                dispatchers.toList(),
-                eventHandlers,
-                stopAction,
-                stopAction,
-                errorHandler
+                id = id,
+                type = type,
+                description = description,
+                modules = modules,
+                eventDispatchers = dispatchers.toList(),
+                eventHandlers = eventHandlers,
+                startAction = startAction,
+                stopAction = stopAction,
+                errorHandler = errorHandler
             )
         }
     }

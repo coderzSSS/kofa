@@ -1,10 +1,13 @@
 package io.kofa.platform.core.internal.component.impl
 
 import io.kofa.platform.api.dsl.model.ComponentDefinition
+import io.kofa.platform.api.inject.ComponentModuleDeclaration
 import io.kofa.platform.api.util.EventDispatcher
 import io.kofa.platform.core.internal.component.Component
-import io.kofa.platform.core.internal.component.ComponentConfig
+import io.kofa.platform.core.internal.component.config.ComponentConfig
 import io.kofa.platform.core.internal.component.ComponentFactory
+import io.kofa.platform.core.internal.component.config.componentModule
+import io.kofa.platform.core.internal.message.simpleMessageSenderModule
 import org.koin.core.Koin
 
 internal class DefaultComponentFactory<T : Any>(
@@ -22,11 +25,18 @@ internal class DefaultComponentFactory<T : Any>(
         return MessageHandlerComponent<T>(
             koin = koin,
             componentConfig = componentConfig,
-            modules = componentDefinition.modules,
-            listOf(buildEventDispatcher(componentDefinition)),
+            modules = componentDefinition.modules + buildDefaultComponentModules(componentConfig),
+            handlers = listOf(buildEventDispatcher(componentDefinition)),
             stopAction = componentDefinition.stopAction,
             startAction = componentDefinition.startAction,
             errorHandler = componentDefinition.errorHandler,
+        )
+    }
+
+    private fun buildDefaultComponentModules(config: ComponentConfig): List<ComponentModuleDeclaration> {
+        return listOf(
+            simpleMessageSenderModule(config),
+            componentModule(config)
         )
     }
 

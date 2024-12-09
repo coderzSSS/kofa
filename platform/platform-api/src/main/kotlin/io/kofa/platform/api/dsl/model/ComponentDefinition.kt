@@ -13,8 +13,8 @@ data class ComponentDefinition<E: Any>(
     val description: String?,
     val modules: List<ComponentModuleDeclaration>,
     val eventDispatchers: List<EventDispatcher<out E>>,
-    val eventHandlers: Map<KClass<out E>, EventContext.(E) -> Unit>,
-    val startAction: Option<() -> Unit> = None,
-    val stopAction: Option<() -> Unit> = None,
+    val eventHandlers: Map<KClass<out E>, suspend EventContext.(E) -> Unit>,
+    val startAction: Option<suspend () -> Unit> = None,
+    val stopAction: Option<suspend () -> Unit> = None,
     val errorHandler: Option<(Throwable) -> Unit> = None
 )

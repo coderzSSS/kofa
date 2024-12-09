@@ -1,5 +1,6 @@
 package io.kofa.platform.core.internal.component
 
+import io.kofa.platform.core.internal.component.config.ComponentConfig
 import org.koin.core.Koin
 
 /**

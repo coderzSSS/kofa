@@ -1,6 +1,7 @@
 package io.kofa.platform.core.internal.thread.eventloop
 
 import io.kofa.platform.core.internal.thread.policy.ShutdownPriority
+import kotlinx.coroutines.CoroutineScope
 
 /**
  * heart of the platform
@@ -31,5 +32,7 @@ internal interface EventLoop {
      * wait for event loop thread to be done
      */
     fun join()
+
+    fun coroutineScope(): CoroutineScope
 }
 

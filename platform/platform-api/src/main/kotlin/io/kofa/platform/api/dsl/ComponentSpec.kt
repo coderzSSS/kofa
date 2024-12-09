@@ -15,11 +15,11 @@ interface ComponentSpec<T: Any> {
 
     fun <E: T> withEventDispatcher(eventDispatcher: EventDispatcher<E>)
 
-    fun <E: T> onEvent(eventClazz: KClass<E>, handler: EventContext.(E) -> Unit)
+    fun <E: T> onEvent(eventClazz: KClass<E>, handler: suspend EventContext.(E) -> Unit)
 
-    fun onStart(action: () -> Unit)
+    fun onStart(action: suspend () -> Unit)
 
-    fun onStop(action: () -> Unit)
+    fun onStop(action: suspend () -> Unit)
 
     fun onError(action: (Throwable) -> Unit)
 }

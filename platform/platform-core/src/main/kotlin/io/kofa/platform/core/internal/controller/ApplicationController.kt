@@ -1,15 +1,21 @@
 package io.kofa.platform.core.internal.controller
 
+import io.kofa.platform.api.dsl.BusinessDeclaration
+import io.kofa.platform.api.dsl.DomainDeclaration
 import io.kofa.platform.api.logger.logger
 import io.kofa.platform.api.util.EventDispatcher
 import io.kofa.platform.core.internal.component.Component
-import io.kofa.platform.core.internal.component.ComponentConfig
+import io.kofa.platform.core.internal.component.config.ComponentConfig
 import io.kofa.platform.core.internal.component.ComponentLoader
 import io.kofa.platform.core.internal.service.EventBusService
+import io.kofa.platform.core.internal.service.meta.MessageMetaRegistry
 import io.kofa.platform.core.internal.thread.eventloop.EventLoop
 import io.kofa.platform.core.internal.thread.eventloop.NamedTask
 import io.kofa.platform.core.internal.thread.policy.ShutdownPriority
 import org.koin.core.Koin
+import org.koin.dsl.ModuleDeclaration
+import org.koin.dsl.module
+import java.util.ServiceLoader
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeoutException
 
@@ -46,10 +52,23 @@ internal class ApplicationController(private val koin: Koin) {
             }
         }
 
+        // load message meta
+        ServiceLoader.load(DomainDeclaration::class.java).forEach { domainDeclaration ->
+            val metaDefinition = domainDeclaration.getDomainDeclaration()
+            MessageMetaRegistry.loadFrom(metaDefinition)
+
+            val globalModule = module {
+                metaDefinition.modules.forEach { moduleDeclaration -> moduleDeclaration.invoke(this)}
+            }
+
+            koin.loadModules(listOf(globalModule))
+        }
+
+        // load component meta
         this.components.addAll(
             ComponentLoader(koin) { type ->
-                requireNotNull(componentMap[type]) { "no component config found for type $type" }
-            }.loadUserComponents()
+                componentMap[type] ?: emptyList()
+            }.loadComponents()
         )
     }
 
