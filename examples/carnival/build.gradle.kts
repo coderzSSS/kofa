@@ -1,5 +1,10 @@
 plugins {
     kotlin("kapt")
+    application
+}
+
+application {
+    mainClass = "io.kofa.platform.launcher.LauncherMainKt"
 }
 
 dependencies {

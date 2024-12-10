@@ -27,7 +27,7 @@ class Carnival: BusinessDeclaration<CarnivalEvent> ({
             logger.info { "got apple ${event.name}" }
             sender.send(Banana("${counter.incrementAndGet()}"))
         }
-    }
+     }
 
     component("Monkey") {
         val logger: Logger by inject()

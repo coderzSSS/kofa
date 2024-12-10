@@ -57,7 +57,7 @@ internal object LauncherMain {
             "Error caught while launching application, existing process with $EXIT_TIMEOUT_SECONDS seconds."
         }
 
-        thread(isDaemon = false, name = "Kill-Thread") {
+        thread(isDaemon = true, name = "Kill-Thread") {
             runCatching {
                 sleep(TimeUnit.SECONDS.toMillis(EXIT_TIMEOUT_SECONDS))
             }.onFailure { e ->

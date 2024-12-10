@@ -1,7 +1,6 @@
 package io.kofa.platform.core.internal.media
 
 import io.kofa.platform.api.logger.logger
-import io.kofa.platform.core.internal.thread.eventloop.EventLoop
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -9,7 +8,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import java.util.concurrent.Executors
 
-internal class LocalEventBus<T : Any> {
+internal class LocalEventBus<T : Any> : AutoCloseable {
     private val flow = MutableSharedFlow<T>()
 
     private val events = flow.asSharedFlow()
@@ -29,14 +28,18 @@ internal class LocalEventBus<T : Any> {
             }.onFailure { error ->
                 logger.error(error) { "exception found on subscribe" }
             }
-        }.launchIn(scope)
+        }.launchIn(this.scope)
     }
 
-    fun close() {
+    override fun close() {
         scope.cancel()
     }
 
     suspend fun awaitClose() {
-        scope.coroutineContext.job.cancelAndJoin()
+        if (scope.isActive) {
+            if (scope.coroutineContext.isActive) {
+                scope.coroutineContext[Job]?.cancelAndJoin()
+            }
+        }
     }
 }

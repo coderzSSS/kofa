@@ -11,14 +11,17 @@ import org.koin.core.Koin
 import java.util.*
 
 internal class ComponentLoader(
-    private val koin: Koin,
-    private val componentConfigProvider: (String) -> List<ComponentConfig>
+    private val koin: Koin
 ) {
     private val componentConfigById = mutableMapOf<String, ComponentConfig>()
     private val componentMetaById = mutableMapOf<String, ComponentDefinition<*>>()
     private val componentById = mutableMapOf<String, ScopedComponent>()
 
-    fun loadComponents(): List<Component> {
+    fun loadComponents(configList: Collection<ComponentConfig>): List<Component> {
+        configList.forEach { config ->
+            componentConfigById[config.source] = config
+        }
+
         ServiceLoader.load(BusinessDeclaration::class.java).flatMap { businessDeclaration ->
             businessDeclaration.getBusinessDeclaration(this::getInjectContext).components
         }.forEach { componentDefinition ->
@@ -26,12 +29,6 @@ internal class ComponentLoader(
 
             check(!componentMetaById.containsKey(componentId)) { "Component $componentId already defined." }
             componentMetaById[componentId] = componentDefinition
-        }
-
-        componentMetaById.values.map { definition -> definition.type }.distinct().forEach { type ->
-            componentConfigProvider(type).forEach { config ->
-                componentConfigById[config.source] = config
-            }
         }
 
         val componentFactory = DefaultComponentFactory(koin) { config -> componentMetaById[config.source] }
@@ -48,7 +45,7 @@ internal class ComponentLoader(
     fun getLoadedComponents(): List<Component> = getSystemComponents() + componentById.values.toList()
 
     private fun getInjectContext(componentType: String): Map<String, () -> InjectContext> {
-        return componentConfigProvider(componentType).associateBy(
+        return componentConfigById.values.filter { config -> config.type == componentType }.associateBy(
             { config -> config.source },
             { config -> { getComponentById(config.source) } }
         )
