@@ -9,7 +9,7 @@ application {
 
 dependencies {
     implementation(rootProject.libs.kotlinx.datetime)
-    implementation(rootProject.libs.autoServiceAnnotation)
+    compileOnly(rootProject.libs.autoServiceAnnotation)
 
     annotationProcessor(rootProject.libs.autoService)
     kapt(rootProject.libs.autoService)

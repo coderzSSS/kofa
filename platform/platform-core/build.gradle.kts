@@ -14,6 +14,7 @@ dependencies {
     implementation(rootProject.libs.arrow.core) {
         exclude("org.jetbrains.kotlin")
     }
+    implementation(rootProject.libs.aeron.all)
     implementation(rootProject.libs.guava)
     implementation(rootProject.libs.chronicle.queue)
     implementation(rootProject.libs.fastutil)
