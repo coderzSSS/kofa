@@ -12,7 +12,7 @@ data class ComponentDefinition<E: Any>(
     val type: String,
     val description: String?,
     val modules: List<ComponentModuleDeclaration>,
-    val eventDispatchers: List<EventDispatcher<out E>>,
+    val eventDispatchers: List<EventDispatcher>,
     val eventHandlers: Map<KClass<out E>, suspend EventContext.(E) -> Unit>,
     val startAction: Option<suspend () -> Unit> = None,
     val stopAction: Option<suspend () -> Unit> = None,

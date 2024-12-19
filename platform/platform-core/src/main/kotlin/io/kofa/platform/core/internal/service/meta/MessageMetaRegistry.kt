@@ -2,6 +2,8 @@ package io.kofa.platform.core.internal.service.meta
 
 import com.google.common.collect.HashBiMap
 import io.kofa.platform.api.dsl.model.DomainMetaDefinition
+import io.kofa.platform.api.meta.MessageMeta
+import io.kofa.platform.api.meta.MessageMetaProvider
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.modules.SerializersModule
 import kotlin.reflect.KClass
@@ -10,6 +12,7 @@ internal object MessageMetaRegistry {
     private val messageMetaById = mutableMapOf<Int, MessageMeta>()
     private val messageTypeByDomainClass = HashBiMap.create<KClass<*>, Int>()
     private val messageCodecById = mutableMapOf<Int, KSerializer<*>>()
+    private var delegates = mutableSetOf<MessageMetaProvider>();
 
     fun loadFrom(domainMeta: DomainMetaDefinition) {
         domainMeta.messages.forEach { meta ->
@@ -21,6 +24,10 @@ internal object MessageMetaRegistry {
                 messageCodecById[meta.id] = it
             }
         }
+    }
+
+    fun addProviders(providers: Collection<MessageMetaProvider>) {
+        delegates.addAll(providers)
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -35,11 +42,18 @@ internal object MessageMetaRegistry {
         }
     }
 
-    fun getDomainClass(eventType: Int) = messageTypeByDomainClass.inverse()[eventType]
+    fun getDomainClass(eventType: Int) : KClass<*>? {
+        val result = delegates.firstNotNullOfOrNull { p -> p.tryGetDomainClass(eventType) }
+        return result ?: messageTypeByDomainClass.inverse()[eventType]
+    }
 
-    fun getMessageType(clazz: KClass<*>) = messageTypeByDomainClass[clazz]
+    fun getMessageType(clazz: KClass<*>) : Int? {
+        val result = delegates.firstNotNullOfOrNull { p -> p.tryGetMessageType(clazz) }
+        return result ?: messageTypeByDomainClass[clazz]
+    }
 
     fun getMessageMeta(clazz: KClass<*>): MessageMeta? {
-        return messageTypeByDomainClass[clazz]?.let { i -> messageMetaById[i] }
+        val result = delegates.firstNotNullOfOrNull { p -> p.tryGetMessageMeta(clazz) }
+        return result ?: messageTypeByDomainClass[clazz]?.let { i -> messageMetaById[i] }
     }
 }

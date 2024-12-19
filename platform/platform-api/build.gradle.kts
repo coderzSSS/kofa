@@ -7,6 +7,7 @@ dependencies {
     api(rootProject.libs.koin)
     api(rootProject.libs.arrow.core)
     api(rootProject.libs.kotlin.logging)
+    api(rootProject.libs.agrona)
 
     implementation(rootProject.libs.config4k)
 

@@ -3,6 +3,7 @@ package io.kofa.platform.core.internal.component
 import io.kofa.platform.api.dsl.BusinessDeclaration
 import io.kofa.platform.api.dsl.model.ComponentDefinition
 import io.kofa.platform.api.inject.InjectContext
+import io.kofa.platform.api.util.EventDispatcher
 import io.kofa.platform.core.internal.component.config.ComponentConfig
 import io.kofa.platform.core.internal.component.config.source
 import io.kofa.platform.core.internal.component.impl.DefaultComponentFactory
@@ -11,7 +12,8 @@ import org.koin.core.Koin
 import java.util.*
 
 internal class ComponentLoader(
-    private val koin: Koin
+    private val koin: Koin,
+    private val globalEventDispatchers: List<EventDispatcher>,
 ) {
     private val componentConfigById = mutableMapOf<String, ComponentConfig>()
     private val componentMetaById = mutableMapOf<String, ComponentDefinition<*>>()
@@ -31,7 +33,7 @@ internal class ComponentLoader(
             componentMetaById[componentId] = componentDefinition
         }
 
-        val componentFactory = DefaultComponentFactory(koin) { config -> componentMetaById[config.source] }
+        val componentFactory = DefaultComponentFactory(koin, globalEventDispatchers) { config -> componentMetaById[config.source] }
 
         componentConfigById.forEach { (componentId, _) ->
             val component =

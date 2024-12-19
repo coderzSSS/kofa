@@ -18,7 +18,7 @@ class ComponentSpecBuilder<T : Any>(val injectContextFactory: () -> InjectContex
     private var description: String? = null
 
     private val modules: MutableList<ComponentModuleDeclaration> = mutableListOf()
-    private val dispatchers: MutableSet<EventDispatcher<out T>> = mutableSetOf()
+    private val dispatchers: MutableSet<EventDispatcher> = mutableSetOf()
 
     private val eventHandlers: MutableMap<KClass<out T>, suspend EventContext.(T) -> Unit> = mutableMapOf()
     private var startAction: Option<suspend () -> Unit> = None
@@ -32,7 +32,7 @@ class ComponentSpecBuilder<T : Any>(val injectContextFactory: () -> InjectContex
         this.modules.addAll(modules)
     }
 
-    override fun <E : T> withEventDispatcher(eventDispatcher: EventDispatcher<E>) {
+    override fun <E : T> withEventDispatcher(eventDispatcher: EventDispatcher) {
         this.dispatchers.add(eventDispatcher)
     }
 

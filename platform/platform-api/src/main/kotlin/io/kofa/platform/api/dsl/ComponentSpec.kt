@@ -13,7 +13,7 @@ interface ComponentSpec<T: Any> {
 
     fun install(vararg modules: ComponentModuleDeclaration)
 
-    fun <E: T> withEventDispatcher(eventDispatcher: EventDispatcher<E>)
+    fun <E: T> withEventDispatcher(eventDispatcher: EventDispatcher)
 
     fun <E: T> onEvent(eventClazz: KClass<E>, handler: suspend EventContext.(E) -> Unit)
 

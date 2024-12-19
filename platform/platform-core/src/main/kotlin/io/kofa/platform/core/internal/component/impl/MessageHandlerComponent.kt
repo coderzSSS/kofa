@@ -7,24 +7,25 @@ import io.kofa.platform.api.util.EventContext
 import io.kofa.platform.api.util.EventDispatcher
 import io.kofa.platform.core.internal.component.config.ComponentConfig
 import org.koin.core.Koin
+import kotlin.reflect.KClass
 
-internal class MessageHandlerComponent<E : Any>(
+internal class MessageHandlerComponent(
     koin: Koin,
     componentConfig: ComponentConfig,
     modules: List<ComponentModuleDeclaration>,
-    private val handlers: List<EventDispatcher<E>>,
+    private val handlers: List<EventDispatcher>,
     private val startAction: Option<suspend () -> Unit> = None,
     private val stopAction: Option<suspend () -> Unit> = None,
     private val errorHandler: Option<(Throwable) -> Unit> = None
-) : ScopedComponent(componentConfig, modules, koin), EventDispatcher<E> {
-    override fun isInterested(eventType: Int): Boolean {
+) : ScopedComponent(componentConfig, modules, koin), EventDispatcher {
+    override fun isInterested(eventType: KClass<*>): Boolean {
         return handlers.any { it.isInterested(eventType) }
     }
 
-    override suspend fun dispatch(eventType: Int, ctx: EventContext, event: E) {
-        handlers.filter { it.isInterested(eventType) }.forEach {
+    override suspend fun <T> dispatch(ctx: EventContext, event: T) {
+        handlers.filter { event != null && it.isInterested(event::class) }.forEach {
             runCatching {
-                it.dispatch(eventType, ctx, event)
+                it.dispatch(ctx, event)
             }.onFailure { e ->
                 errorHandler.getOrNull()?.invoke(e)
             }

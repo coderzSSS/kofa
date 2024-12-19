@@ -3,7 +3,7 @@ package io.kofa.platform.core.internal.service
 import io.kofa.platform.api.util.EventDispatcher
 
 internal interface EventBusService {
-    fun addDispatcher(dispatcher: EventDispatcher<Any>)
+    fun addDispatcher(dispatcher: EventDispatcher)
 }
 
 internal data class EventHeader(

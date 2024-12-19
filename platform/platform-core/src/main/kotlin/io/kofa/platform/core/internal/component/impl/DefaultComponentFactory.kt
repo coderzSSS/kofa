@@ -10,9 +10,10 @@ import io.kofa.platform.core.internal.component.config.componentModule
 import io.kofa.platform.core.internal.message.simpleMessageSenderModule
 import org.koin.core.Koin
 
-internal class DefaultComponentFactory<T : Any>(
+internal class DefaultComponentFactory(
     private val koin: Koin,
-    private val componentDefinitionProvider: (ComponentConfig) -> ComponentDefinition<T>?,
+    private val globalEventDispatchers: List<EventDispatcher>,
+    private val componentDefinitionProvider: (ComponentConfig) -> ComponentDefinition<*>?,
 ) : ComponentFactory {
     override fun create(componentConfig: ComponentConfig): Component {
         val componentId = componentConfig.type
@@ -21,12 +22,12 @@ internal class DefaultComponentFactory<T : Any>(
         return doCreate(definition, componentConfig)
     }
 
-    private fun doCreate(componentDefinition: ComponentDefinition<T>, componentConfig: ComponentConfig): ScopedComponent {
-        return MessageHandlerComponent<T>(
+    private fun doCreate(componentDefinition: ComponentDefinition<*>, componentConfig: ComponentConfig): ScopedComponent {
+        return MessageHandlerComponent(
             koin = koin,
             componentConfig = componentConfig,
             modules = componentDefinition.modules + buildDefaultComponentModules(componentConfig),
-            handlers = listOf(buildEventDispatcher(componentDefinition)),
+            handlers = globalEventDispatchers + buildEventDispatcher(componentDefinition),
             stopAction = componentDefinition.stopAction,
             startAction = componentDefinition.startAction,
             errorHandler = componentDefinition.errorHandler,
@@ -40,8 +41,9 @@ internal class DefaultComponentFactory<T : Any>(
         )
     }
 
-    private fun buildEventDispatcher(componentDefinition: ComponentDefinition<T>): EventDispatcher<T> {
-        return UserDefinedEventDispatcher(componentDefinition)
+    @Suppress("UNCHECKED_CAST")
+    private fun buildEventDispatcher(componentDefinition: ComponentDefinition<*>): EventDispatcher {
+        return UserDefinedEventDispatcher(componentDefinition as ComponentDefinition<Any>)
     }
 }
 

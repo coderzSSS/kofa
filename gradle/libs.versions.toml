@@ -1,5 +1,7 @@
 [versions]
 aeron = "1.46.7"
+agrona = "1.23.1"
+sbe = "1.33.2"
 arrow = "2.0.0-beta.3"
 com-google-auto-service = "1.1.1"
 junit = "5.11.0-RC1"
@@ -19,6 +21,8 @@ versions = "com.github.ben-manes.versions:0.51.0"
 
 [libraries]
 aeron-all = { module = "io.aeron:aeron-all", version.ref = "aeron" }
+agrona = { module = "org.agrona:agrona", version.ref = "agrona" }
+sbe = { module = "uk.co.real-logic:sbe-all", version.ref = "sbe" }
 arrow-core = { module = "io.arrow-kt:arrow-core", version.ref = "arrow" }
 autoService = { module = "com.google.auto.service:auto-service", version.ref = "com-google-auto-service" }
 autoServiceAnnotation = { module = "com.google.auto.service:auto-service-annotations", version.ref = "com-google-auto-service" }

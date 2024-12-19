@@ -2,6 +2,7 @@ package io.kofa.platform.core.internal.controller
 
 import io.kofa.platform.api.dsl.DomainDeclaration
 import io.kofa.platform.api.logger.logger
+import io.kofa.platform.api.meta.MessageMetaProvider
 import io.kofa.platform.api.util.EventDispatcher
 import io.kofa.platform.core.internal.component.Component
 import io.kofa.platform.core.internal.component.ComponentLoader
@@ -62,8 +63,10 @@ internal class ApplicationController(private val koin: Koin) {
             koin.loadModules(listOf(globalModule))
         }
 
+        MessageMetaRegistry.addProviders(koin.getAll<MessageMetaProvider>())
+
         // load component meta
-        val componentLoader = ComponentLoader(koin)
+        val componentLoader = ComponentLoader(koin, koin.getAll<EventDispatcher>())
         componentLoader.loadComponents(components)
 
         this.components.addAll(componentLoader.getLoadedComponents())
@@ -86,8 +89,8 @@ internal class ApplicationController(private val koin: Koin) {
         this.components.forEach {
             initComponent(it)
 
-            if (it is EventDispatcher<*>) {
-                busService.addDispatcher(it as EventDispatcher<Any>)
+            if (it is EventDispatcher) {
+                busService.addDispatcher(it)
             }
         }
 

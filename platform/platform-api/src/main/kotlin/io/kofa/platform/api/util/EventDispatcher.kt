@@ -1,7 +1,9 @@
 package io.kofa.platform.api.util;
 
-interface EventDispatcher<T: Any> {
-    fun isInterested(eventType: Int): Boolean
+import kotlin.reflect.KClass
 
-    suspend fun dispatch(eventType: Int, ctx: EventContext, event: T)
+interface EventDispatcher {
+    fun isInterested(eventType: KClass<*>): Boolean
+
+    suspend fun <T> dispatch(ctx: EventContext, event: T)
 }

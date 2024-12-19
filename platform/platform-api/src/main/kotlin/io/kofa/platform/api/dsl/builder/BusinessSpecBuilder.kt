@@ -24,7 +24,7 @@ class BusinessSpecBuilder<E : Any> : BusinessDomainSpec<E> {
         }.onLeft { error -> throw IllegalStateException(error) }
     }
 
-    internal fun build(injectContextProviders: (String) -> Map<String, () -> InjectContext>): Either<String, DomainHandlerDefinition> {
+    internal fun build(injectContextProviders: (String) -> Map<String, () -> InjectContext>): Either<String, DomainHandlerDefinition<E>> {
         return either {
             ensure(components.isNotEmpty()) { "no component specified" }
             val componentDefinitions = components.entries.flatMap { (type, spec) ->
@@ -35,7 +35,7 @@ class BusinessSpecBuilder<E : Any> : BusinessDomainSpec<E> {
                 }
             }.bindAll()
 
-            DomainHandlerDefinition(
+            DomainHandlerDefinition<E>(
                 componentDefinitions
             )
         }
