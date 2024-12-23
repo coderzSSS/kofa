@@ -17,6 +17,16 @@ abstract class AbstractMessageBusService<T: Any>: EventDispatcher, InjectContext
     val logger: Logger by inject()
     val config: Config by inject()
 
+    protected suspend fun sendMessage(msg: T) {
+        messageSender.send(msg)
+    }
+
+    open suspend fun onStartup() {}
+
+    open suspend fun onShutdown() {}
+
+    open suspend fun onException(e: Throwable) {}
+
     override fun <T : Any> getOrNull(clazz: KClass<T>, name: String?): T? {
         return injectContext.get<T>(clazz, name)
     }

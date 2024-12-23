@@ -14,28 +14,35 @@ internal class MessageHandlerComponent(
     koin: Koin,
     componentConfig: ComponentConfig,
     modules: List<ComponentModuleDeclaration>,
-    private val handlers: List<EventDispatcher>,
+    private val eagerDispatchers: List<EventDispatcher>,
+    private val lazyDispatchers: List<Lazy<EventDispatcher>>,
     private val startAction: Option<suspend () -> Unit> = None,
     private val stopAction: Option<suspend () -> Unit> = None,
     private val errorHandler: Option<(Throwable) -> Unit> = None
 ) : ScopedComponent(componentConfig, modules, koin), EventDispatcher {
-    init {
-        handlers.forEach { d ->
-            if (d is AbstractMessageBusService<*>) {
-                d.setInjectContext(this)
-            }
+    private val dispatchers by lazy {
+        eagerDispatchers + lazyDispatchers.map { d -> d.value }
+    }
+
+    private val handlers by lazy {
+        val result = dispatchers.mapNotNull { dispatcher -> dispatcher as? AbstractMessageBusService<*> }
+        result.forEach { handler ->
+            handler.setInjectContext(this)
         }
+
+        result
     }
 
     override fun isInterested(eventType: KClass<*>): Boolean {
-        return handlers.any { it.isInterested(eventType) }
+        return dispatchers.any { it.isInterested(eventType) }
     }
 
     override suspend fun <T> dispatch(ctx: EventContext, event: T) {
-        handlers.filter { event != null && it.isInterested(event::class) }.forEach {
+        dispatchers.filter { event != null && it.isInterested(event::class) }.forEach {
             runCatching {
                 it.dispatch(ctx, event)
             }.onFailure { e ->
+                handlers.forEach { handler -> handler.onException(e) }
                 errorHandler.getOrNull()?.invoke(e)
                 throw e
             }
@@ -44,11 +51,17 @@ internal class MessageHandlerComponent(
 
     override suspend fun start() {
         super.start()
+
+        handlers.forEach { handler -> handler.onStartup()}
+
         startAction.getOrNull()?.invoke()
     }
 
     override suspend fun stop() {
+        handlers.forEach { handler -> handler.onShutdown() }
+
         stopAction.getOrNull()?.invoke()
+
         super.stop()
     }
 }

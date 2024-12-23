@@ -11,6 +11,11 @@ class ClownHandler(
 ) : CarnivalMessageHandler() {
     val counter = AtomicInteger(0)
 
+    override suspend fun onStartup() {
+        logger.info { "sending banana ${counter.get() + 1}" }
+        messageSender.send(Banana("${counter.incrementAndGet()}"))
+    }
+
     override suspend fun onAppleEvent(event: CarnivalEvent.Apple) {
         logger.info { "got apple ${event.name}" }
         if (event.name.toInt() < clownConfig.limit) {

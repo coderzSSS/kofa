@@ -5,8 +5,8 @@ import io.kofa.platform.api.inject.ComponentModuleDeclaration
 import io.kofa.platform.api.util.EventContext
 import io.kofa.platform.api.util.EventDispatcher
 import io.kofa.platform.core.internal.component.Component
-import io.kofa.platform.core.internal.component.config.ComponentConfig
 import io.kofa.platform.core.internal.component.ComponentFactory
+import io.kofa.platform.core.internal.component.config.ComponentConfig
 import io.kofa.platform.core.internal.component.config.componentModule
 import io.kofa.platform.core.internal.message.simpleMessageSenderModule
 import org.koin.core.Koin
@@ -19,17 +19,22 @@ internal class DefaultComponentFactory(
 ) : ComponentFactory {
     override fun create(componentConfig: ComponentConfig): Component {
         val componentId = componentConfig.type
-        val definition = requireNotNull(componentDefinitionProvider.invoke(componentConfig)) { "no component definition found for id $componentId" }
+        val definition =
+            requireNotNull(componentDefinitionProvider.invoke(componentConfig)) { "no component definition found for id $componentId" }
 
         return doCreate(definition, componentConfig)
     }
 
-    private fun doCreate(componentDefinition: ComponentDefinition<*>, componentConfig: ComponentConfig): ScopedComponent {
+    private fun doCreate(
+        componentDefinition: ComponentDefinition<*>,
+        componentConfig: ComponentConfig
+    ): ScopedComponent {
         return MessageHandlerComponent(
             koin = koin,
             componentConfig = componentConfig,
             modules = componentDefinition.modules + buildDefaultComponentModules(componentConfig),
-            handlers = globalEventDispatchers + buildEventDispatcher(componentDefinition),
+            eagerDispatchers = globalEventDispatchers + buildEventDispatcher(componentDefinition),
+            lazyDispatchers = componentDefinition.eventDispatchers,
             stopAction = componentDefinition.stopAction,
             startAction = componentDefinition.startAction,
             errorHandler = componentDefinition.errorHandler,
