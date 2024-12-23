@@ -3,6 +3,7 @@ package io.kofa.platform.core.internal.component.impl
 import arrow.core.None
 import arrow.core.Option
 import io.kofa.platform.api.inject.ComponentModuleDeclaration
+import io.kofa.platform.api.util.AbstractMessageBusService
 import io.kofa.platform.api.util.EventContext
 import io.kofa.platform.api.util.EventDispatcher
 import io.kofa.platform.core.internal.component.config.ComponentConfig
@@ -18,6 +19,14 @@ internal class MessageHandlerComponent(
     private val stopAction: Option<suspend () -> Unit> = None,
     private val errorHandler: Option<(Throwable) -> Unit> = None
 ) : ScopedComponent(componentConfig, modules, koin), EventDispatcher {
+    init {
+        handlers.forEach { d ->
+            if (d is AbstractMessageBusService<*>) {
+                d.setInjectContext(this)
+            }
+        }
+    }
+
     override fun isInterested(eventType: KClass<*>): Boolean {
         return handlers.any { it.isInterested(eventType) }
     }

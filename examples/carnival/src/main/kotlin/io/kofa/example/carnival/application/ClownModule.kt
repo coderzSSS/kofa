@@ -22,7 +22,7 @@ object ClownModule {
 
     fun clownHandler(): ComponentModuleDeclaration = {
         scoped {
-            ClownHandler(get(), get(), get())
+            ClownHandler(get())
         }.bind(CarnivalMessageHandler::class)
     }
 }

@@ -37,6 +37,10 @@ internal open class ScopedComponent(
                         }.bind()
 
                         scoped {
+                            this@ScopedComponent
+                        }.bind(InjectContext::class)
+
+                        scoped {
                             componentConfig.config
                         }.bind(Config::class)
 

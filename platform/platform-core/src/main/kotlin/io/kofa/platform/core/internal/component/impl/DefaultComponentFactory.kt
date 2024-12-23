@@ -2,6 +2,7 @@ package io.kofa.platform.core.internal.component.impl
 
 import io.kofa.platform.api.dsl.model.ComponentDefinition
 import io.kofa.platform.api.inject.ComponentModuleDeclaration
+import io.kofa.platform.api.util.EventContext
 import io.kofa.platform.api.util.EventDispatcher
 import io.kofa.platform.core.internal.component.Component
 import io.kofa.platform.core.internal.component.config.ComponentConfig
@@ -9,6 +10,7 @@ import io.kofa.platform.core.internal.component.ComponentFactory
 import io.kofa.platform.core.internal.component.config.componentModule
 import io.kofa.platform.core.internal.message.simpleMessageSenderModule
 import org.koin.core.Koin
+import kotlin.reflect.KClass
 
 internal class DefaultComponentFactory(
     private val koin: Koin,
@@ -43,7 +45,7 @@ internal class DefaultComponentFactory(
 
     @Suppress("UNCHECKED_CAST")
     private fun buildEventDispatcher(componentDefinition: ComponentDefinition<*>): EventDispatcher {
-        return UserDefinedEventDispatcher(componentDefinition as ComponentDefinition<Any>)
+        return UserDefinedEventDispatcher(componentDefinition.eventHandlers as Map<KClass<*>, suspend EventContext.(Any) -> Unit>)
     }
 }
 
