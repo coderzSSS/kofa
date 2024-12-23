@@ -3,6 +3,7 @@ package io.kofa.platform.core.internal.component.impl
 import arrow.core.None
 import arrow.core.Option
 import io.kofa.platform.api.inject.ComponentModuleDeclaration
+import io.kofa.platform.api.logger.logger
 import io.kofa.platform.api.util.AbstractMessageBusService
 import io.kofa.platform.api.util.EventContext
 import io.kofa.platform.api.util.EventDispatcher
@@ -51,6 +52,9 @@ internal class MessageHandlerComponent(
 
     override suspend fun start() {
         super.start()
+
+        //DON"T DELETE init dispatchers
+        logger.trace { "${dispatchers.size}" }
 
         handlers.forEach { handler -> handler.onStartup()}
 
