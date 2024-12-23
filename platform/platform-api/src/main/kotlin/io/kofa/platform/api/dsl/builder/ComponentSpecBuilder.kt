@@ -18,7 +18,7 @@ class ComponentSpecBuilder<T : Any>(val injectContextFactory: () -> InjectContex
     private var description: String? = null
 
     private val modules: MutableList<ComponentModuleDeclaration> = mutableListOf()
-    private val dispatchers: MutableSet<EventDispatcher> = mutableSetOf()
+    private val dispatchers: MutableSet<Lazy<EventDispatcher>> = mutableSetOf()
 
     private val eventHandlers: MutableMap<KClass<out T>, suspend EventContext.(T) -> Unit> = mutableMapOf()
     private var startAction: Option<suspend () -> Unit> = None
@@ -32,7 +32,7 @@ class ComponentSpecBuilder<T : Any>(val injectContextFactory: () -> InjectContex
         this.modules.addAll(modules)
     }
 
-    override fun <E : T> withEventDispatcher(eventDispatcher: EventDispatcher) {
+    override fun withEventDispatcher(eventDispatcher: Lazy<EventDispatcher>) {
         this.dispatchers.add(eventDispatcher)
     }
 
@@ -55,7 +55,7 @@ class ComponentSpecBuilder<T : Any>(val injectContextFactory: () -> InjectContex
 
     internal fun build(id: String, type: String): Either<String, ComponentDefinition<T>> {
         return either {
-            ensure(eventHandlers.isNotEmpty()) { "no event handler specified." }
+            ensure(eventHandlers.isNotEmpty() || dispatchers.isNotEmpty()) { "no event handler specified." }
             ComponentDefinition(
                 id = id,
                 type = type,

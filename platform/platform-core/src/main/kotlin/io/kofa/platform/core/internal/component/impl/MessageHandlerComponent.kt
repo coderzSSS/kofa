@@ -28,6 +28,7 @@ internal class MessageHandlerComponent(
                 it.dispatch(ctx, event)
             }.onFailure { e ->
                 errorHandler.getOrNull()?.invoke(e)
+                throw e
             }
         }
     }

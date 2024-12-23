@@ -1,5 +1,6 @@
 package io.kofa.platform.core.internal.component.impl
 
+import io.kofa.platform.api.config.Config
 import io.kofa.platform.api.inject.ComponentModuleDeclaration
 import io.kofa.platform.api.inject.InjectContext
 import io.kofa.platform.api.logger.Logger
@@ -34,6 +35,10 @@ internal open class ScopedComponent(
                         scoped {
                             componentConfig
                         }.bind()
+
+                        scoped {
+                            componentConfig.config
+                        }.bind(Config::class)
 
                         val logger = componentConfig.logger
 
