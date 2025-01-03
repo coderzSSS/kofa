@@ -1,13 +1,7 @@
 package io.kofa.platform.codegen.parser
 
 import arrow.atomic.AtomicInt
-import io.kofa.platform.codegen.domain.DomainInterface
-import io.kofa.platform.codegen.domain.DomainMessage
-import io.kofa.platform.codegen.domain.DomainType
-import io.kofa.platform.codegen.domain.PlainDomain
-import io.kofa.platform.codegen.domain.PlainDomainField
-import io.kofa.platform.codegen.domain.ResolvedDomain
-import io.kofa.platform.codegen.domain.ResolvedDomainField
+import io.kofa.platform.codegen.domain.*
 
 class DefaultDomainResolver(
     private val domainProvider: () -> PlainDomain,
@@ -33,8 +27,11 @@ class DefaultDomainResolver(
         return fields.maxOf { field -> field.id ?: 0 } + 1
     }
 
-    private fun resolveDomain(plainDomain: PlainDomain): ResolvedDomain {
-        val typeFieldCounter = plainDomain.types.associateWith { type -> AtomicInt(nextFieldId(type.fields)) }
+    private fun resolveDomain(plainDomain: PlainDomain, updateId: Boolean = false): ResolvedDomain {
+        val typeFieldIdCounter =
+            plainDomain.types.associateBy({ type -> type.name }) { type -> AtomicInt(nextFieldId(type.fields)) }
+
+        val messageIdCounter = AtomicInt(plainDomain.messages.maxOf { m -> m.id ?: 0 })
 
         return ResolvedDomain(
             domainName = plainDomain.domainName,
@@ -43,21 +40,35 @@ class DefaultDomainResolver(
             types = plainDomain.types.map { type ->
                 DomainType<ResolvedDomainField>(
                     name = type.name,
-                    fields = type.fields.map {f -> resolveDomainField(f)}
+                    fields = type.fields.map { f -> resolveDomainField(f, typeFieldIdCounter[type.name]!!, updateId) }
                 )
             },
             enums = plainDomain.enums,
             interfaces = plainDomain.interfaces.map { type ->
                 DomainInterface<ResolvedDomainField>(
                     name = type.name,
-                    fields = type.fields.map {f -> resolveDomainField(f)}
+                    fields = type.fields.map { f -> resolveDomainField(f, typeFieldIdCounter[type.name]!!, updateId) }
                 )
             },
-            messages = mapOf()
+            messages = plainDomain.messages.map { type ->
+                DomainMessage<ResolvedDomainField>(
+                    id = if (updateId && type.id == null) {
+                        messageIdCounter.incrementAndGet()
+                    } else {
+                        type.id
+                    },
+                    name = type.name,
+                    fields = type.fields.map { f -> resolveDomainField(f, typeFieldIdCounter[type.name]!!, updateId) }
+                )
+            },
         )
     }
 
-    private fun resolveDomainField(plainDomainField: PlainDomainField): ResolvedDomainField {
+    private fun resolveDomainField(
+        plainDomainField: PlainDomainField,
+        counter: AtomicInt,
+        updateId: Boolean
+    ): ResolvedDomainField {
         TODO()
     }
 

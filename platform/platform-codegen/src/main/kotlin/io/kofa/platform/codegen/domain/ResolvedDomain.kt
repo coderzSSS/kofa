@@ -7,5 +7,5 @@ data class ResolvedDomain(
     val types: List<DomainType<ResolvedDomainField>>,
     val enums: List<DomainType<DomainEnumField>>,
     val interfaces : List<DomainInterface<ResolvedDomainField>>,
-    val messages: Map<Int, DomainMessage<ResolvedDomainField>>
+    val messages: List<DomainMessage<ResolvedDomainField>>
 )
