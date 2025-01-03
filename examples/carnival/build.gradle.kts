@@ -31,6 +31,7 @@ task(name = "generateSbeMessages", type = JavaExec::class) {
         "sbe.output.dir" to "build/generated/java",
         "sbe.target.language" to "Java",
         "sbe.validation.stop.on.error" to "true",
+        "sbe.xinclude.aware" to "true",
         "sbe.validation.xsd" to "src/main/resources/sbe/sbe.xsd"
     )
     args = listOf("src/main/resources/domain/domain-sbe.xml")

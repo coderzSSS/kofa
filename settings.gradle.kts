@@ -18,4 +18,5 @@ include("platform")
 include("platform:platform-api")
 include("platform:platform-core")
 include("platform:platform-launcher")
+include("platform:platform-codegen")
 

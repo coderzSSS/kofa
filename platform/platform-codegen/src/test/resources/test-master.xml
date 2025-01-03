@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<domain xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        name="test"
+        package="org.lockfast.domain.test.generated"
+        import="common-master.xml"
+        xsi:noNamespaceSchemaLocation="../../main/resources/xsd/domain-master.xsd">
+    <interfaces>
+        <interface name="InterfaceA">
+            <fields>
+                <field name="fieldA" type="string"/>
+                <field name="fieldB" type="int"/>
+            </fields>
+        </interface>
+    </interfaces>
+
+    <types>
+        <type name="TypeA">
+            <fields>
+                <field name="fieldA" type="string"/>
+                <field name="fieldB" type="string"/>
+            </fields>
+        </type>
+    </types>
+
+    <messages>
+
+        <message name="MsgA">
+            <implements>
+                <interface name="InterfaceA"/>
+                <interface name="CommonInterface"/>
+            </implements>
+            <fields>
+                <field name="name" type="string"/>
+                <field name="value" type="TypeA"/>
+            </fields>
+        </message>
+
+    </messages>
+</domain>

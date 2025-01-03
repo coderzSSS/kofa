@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<domain xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        name="test"
+        package="org.lockfast.domain.common.generated"
+        xsi:noNamespaceSchemaLocation="../../main/resources/xsd/domain-master.xsd">
+    <interfaces>
+        <interface name="CommonInterface">
+            <fields>
+                <field name="fieldA" type="string"/>
+                <field name="fieldB" type="int"/>
+            </fields>
+        </interface>
+    </interfaces>
+
+    <types>
+        <type name="CommonType">
+            <fields>
+                <field name="fieldA" type="string"/>
+                <field name="fieldB" type="string"/>
+            </fields>
+        </type>
+    </types>
+
+    <messages>
+
+        <message name="CommonMessage">
+            <fields>
+                <field name="fieldA" type="string"/>
+                <field name="fieldB" type="string"/>
+            </fields>
+        </message>
+
+    </messages>
+</domain>

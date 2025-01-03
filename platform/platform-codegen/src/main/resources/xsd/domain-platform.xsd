@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+   <xs:redefine schemaLocation="domain-types.xsd">
+       <xs:complexType name="enumField">
+           <xs:complexContent>
+               <xs:restriction base="enumField">
+                   <xs:attribute name="value" type="xs:positiveInteger" use="required"/>
+               </xs:restriction>
+           </xs:complexContent>
+       </xs:complexType>
+
+        <xs:complexType name="genericTypeField">
+            <xs:complexContent>
+                <xs:restriction base="genericTypeField">
+                    <xs:attribute name="id" type="xs:positiveInteger" use="required"/>
+                </xs:restriction>
+            </xs:complexContent>
+        </xs:complexType>
+
+       <xs:complexType name="baseMessage">
+           <xs:complexContent>
+               <xs:restriction base="baseMessage">
+                   <xs:attribute name="id" type="xs:negativeInteger" use="required"/>
+               </xs:restriction>
+           </xs:complexContent>
+       </xs:complexType>
+
+   </xs:redefine>
+
+    <xs:element name="domain" type="domain" />
+
+</xs:schema>

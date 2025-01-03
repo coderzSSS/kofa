@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<domain xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        name="platform"
+        package="org.lockfast.platform.core.component.generated"
+        xsi:noNamespaceSchemaLocation="../../main/resources/xsd/domain-platform.xsd">
+    <messages>
+
+        <message id="-10" name="StringProperty">
+            <fields>
+                <field name="name" type="string" id="1"/>
+                <field name="value" type="string" id="2"/>
+            </fields>
+        </message>
+
+        <message id="-11" name="IntegerProperty">
+            <fields>
+                <field name="name" type="string" id="1"/>
+                <field name="value" type="int" id="2"/>
+            </fields>
+        </message>
+
+        <message id="-12" name="LongProperty">
+            <fields>
+                <field name="name" type="string" id="1"/>
+                <field name="value" type="long" id="2"/>
+            </fields>
+        </message>
+
+        <message id="-13" name="DoubleProperty">
+            <fields>
+                <field name="name" type="string" id="1"/>
+                <field name="value" type="double" id="2"/>
+            </fields>
+        </message>
+
+        <message id="-14" name="BooleanProperty">
+            <fields>
+                <field name="name" type="string" id="1"/>
+                <field name="value" type="boolean" id="2"/>
+            </fields>
+        </message>
+
+        <message id="-15" name="ScrollComplete">
+            <fields>
+                <field name="scrollName" type="string" id="1"/>
+            </fields>
+        </message>
+
+    </messages>
+</domain>
