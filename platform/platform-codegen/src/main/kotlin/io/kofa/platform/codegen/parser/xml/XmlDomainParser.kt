@@ -9,7 +9,13 @@ import java.io.File
 import java.io.InputStream
 
 class XmlDomainParser : AbstractXmlDomainParser() {
-    fun parse(inputStream: InputStream, xsdFile: File? = null): PlainDomain {
+    fun parse(xmlPath: String, xsdFile: File? = null): PlainDomain {
+        return resolveUrl(xmlPath).openStream().use {
+            parse(it, xsdFile)
+        }
+    }
+
+    private fun parse(inputStream: InputStream, xsdFile: File? = null): PlainDomain {
         return processDomain(parseDomain(inputStream, xsdFile))
     }
 
@@ -58,6 +64,10 @@ class XmlDomainParser : AbstractXmlDomainParser() {
     }
 
     private fun resolveTypes(domain: Domain, shallowDomain: PlainDomain? = null): List<DomainType<PlainDomainField>> {
+        if (domain.types == null) {
+            return listOf()
+        }
+
         return domain.types.typeOrComposite.map { type ->
             DomainType(
                 name = type.name,
@@ -66,7 +76,7 @@ class XmlDomainParser : AbstractXmlDomainParser() {
                         name = field.name,
                         typeName = field.type,
                         length = field.maxLength?.toInt(),
-                        deprecated = field.isDeprecated
+                        deprecated = field.isDeprecated ?: false
                     )
                 } + resolveExtension(shallowDomain, (type as? Type)?.implements)
             )
@@ -74,6 +84,10 @@ class XmlDomainParser : AbstractXmlDomainParser() {
     }
 
     private fun resolveEnums(domain: Domain): List<DomainType<DomainEnumField>> {
+        if (domain.enums == null) {
+            return listOf()
+        }
+
         return domain.enums.enumOrEnum16.map { type ->
             val value = type.value
             DomainType(
@@ -82,14 +96,21 @@ class XmlDomainParser : AbstractXmlDomainParser() {
                     DomainEnumField(
                         name = field.name,
                         value = field.value?.toInt(),
-                        deprecated = field.isDeprecated
+                        deprecated = field.isDeprecated ?: false
                     )
                 }
             )
         }
     }
 
-    private fun resolveMessages(domain: Domain, shallowDomain: PlainDomain? = null): List<DomainMessage<PlainDomainField>> {
+    private fun resolveMessages(
+        domain: Domain,
+        shallowDomain: PlainDomain? = null
+    ): List<DomainMessage<PlainDomainField>> {
+        if (domain.messages == null) {
+            return listOf()
+        }
+
         return domain.messages.message.map { type ->
             DomainMessage(
                 name = type.name,
@@ -99,14 +120,21 @@ class XmlDomainParser : AbstractXmlDomainParser() {
                         name = field.name,
                         typeName = field.type,
                         length = (field as? MessageField)?.maxLength?.toInt(),
-                        deprecated = field.isDeprecated
+                        deprecated = field.isDeprecated ?: false
                     )
                 } + resolveExtension(shallowDomain, type.implements)
             )
         }
     }
 
-    private fun resolveInterfaces(domain: Domain, shallowDomain: PlainDomain? = null): List<DomainInterface<PlainDomainField>> {
+    private fun resolveInterfaces(
+        domain: Domain,
+        shallowDomain: PlainDomain? = null
+    ): List<DomainInterface<PlainDomainField>> {
+        if (domain.interfaces == null) {
+            return listOf()
+        }
+
         return domain.interfaces.`interface`.map { type ->
             DomainInterface(
                 name = type.name,
@@ -115,9 +143,9 @@ class XmlDomainParser : AbstractXmlDomainParser() {
                         name = field.name,
                         typeName = field.type,
                         length = field.maxLength?.toInt(),
-                        deprecated = field.isDeprecated
+                        deprecated = field.isDeprecated ?: false
                     )
-                }  + resolveExtension(shallowDomain, type.implements)
+                } + resolveExtension(shallowDomain, type.implements)
             )
         }
     }
@@ -131,7 +159,8 @@ class XmlDomainParser : AbstractXmlDomainParser() {
     }
 
     private fun resolveExtension(shallowDomain: PlainDomain, names: List<String>): List<PlainDomainField> {
-        var fields = shallowDomain.interfaces.filter { type -> names.contains(type.name) }.flatMap { type -> type.fields }
+        var fields =
+            shallowDomain.interfaces.filter { type -> names.contains(type.name) }.flatMap { type -> type.fields }
 
         if (fields.isEmpty()) {
             fields = shallowDomain.imports.flatMap { d -> resolveExtension(d, names) }

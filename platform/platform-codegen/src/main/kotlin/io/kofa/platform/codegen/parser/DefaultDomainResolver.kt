@@ -2,34 +2,220 @@ package io.kofa.platform.codegen.parser
 
 import arrow.atomic.AtomicInt
 import io.kofa.platform.codegen.domain.*
+import io.kofa.platform.codegen.domain.registry.DomainTypeRegistry
+import io.kofa.platform.codegen.domain.type.ArrayFieldTypeWrapper
+import io.kofa.platform.codegen.domain.type.DomainFieldType
+import io.kofa.platform.codegen.domain.type.GeneratedEnumFieldType
+import io.kofa.platform.codegen.domain.type.GeneratedFieldType
 
 class DefaultDomainResolver(
     private val domainProvider: () -> PlainDomain,
     private val existingDomainProvider: () -> PlainDomain?
 ) {
+    companion object {
+        const val ARRAY_SUFFIX = "[]"
+    }
+
+    val typeRegistry = DomainTypeRegistry()
+    val lazyTypes = mutableMapOf<String, Lazy<GeneratedFieldType>>()
 
     fun resolve(): ResolvedDomain {
         val plainDomain = parseLatest()
         val existingDomain = parseExisting()
 
-        return if (existingDomain != null) {
+        val finalDomain = if (existingDomain != null) {
             checkAndMerge(plainDomain, existingDomain)
         } else {
-            resolveDomain(plainDomain)
+            plainDomain
+        }
+
+        registerDomainType(finalDomain)
+
+        return resolveDomain(finalDomain)
+    }
+
+    private fun checkAndMerge(masterDomain: PlainDomain, generatedDomain: PlainDomain): PlainDomain {
+        // ignore imported domain because it is already flattened
+        // for each domain type in masterDomain, check if it exists in generatedDomain by name, if not, add it, if yes, check if field id is the same or absent in masterDomain,
+        // and make sure the other property is identical
+        val finalTypes = checkAndMergeTypes(masterDomain.types, generatedDomain.types)
+        val finalEnums = checkAndMergeEnums(masterDomain.enums, generatedDomain.enums)
+        val finalInterfaces = checkAndMergeInterfaces(masterDomain.interfaces, generatedDomain.interfaces)
+        val finalMessages = checkAndMergeMessages(masterDomain.messages, generatedDomain.messages)
+
+        return PlainDomain(
+            domainName = masterDomain.domainName,
+            pkgName = masterDomain.pkgName,
+            imports = masterDomain.imports,
+            types = finalTypes,
+            enums = finalEnums,
+            interfaces = finalInterfaces,
+            messages = finalMessages
+        )
+    }
+
+    private fun checkAndMergeInterfaces(
+        current: List<DomainInterface<PlainDomainField>>,
+        existing: List<DomainInterface<PlainDomainField>>
+    ) = checkAndMerge(current, existing, { it.name }) { t1, t2 ->
+        checkAndMerge(t1.fields, t2.fields)
+    }
+
+    private fun checkAndMergeMessages(
+        current: List<DomainMessage<PlainDomainField>>,
+        existing: List<DomainMessage<PlainDomainField>>
+    ) = checkAndMerge(
+        current,
+        existing,
+        { it.name },
+        { t, b -> t },
+        { t -> t.id },
+        { t, i -> t.copy(id = i) }) { t1, t2 ->
+        checkAndMerge(t1.fields, t2.fields)
+    }
+
+    private fun checkAndMergeTypes(
+        current: List<DomainType<PlainDomainField>>,
+        existing: List<DomainType<PlainDomainField>>
+    ) = checkAndMerge(current, existing, { it.name }) { t1, t2 ->
+        checkAndMerge(t1.fields, t2.fields)
+    }
+
+    private fun checkAndMergeEnums(
+        current: List<DomainType<DomainEnumField>>,
+        existing: List<DomainType<DomainEnumField>>
+    ) = checkAndMerge(current, existing, { it.name }) { t1, t2 ->
+        checkAndMergeEnumFields(t1.fields, t2.fields)
+    }
+
+    private fun checkAndMergeEnumFields(current: List<DomainEnumField>, existing: List<DomainEnumField>) =
+        checkAndMerge(
+            current,
+            existing,
+            { it.name },
+            { type, deprecated -> type.copy(deprecated = deprecated) }) { t1, t2 ->
+            check(t1.value == t2.value) { "conflict enum value found for ${t1.name}: ${t1.value} vs ${t2.value}" }
+        }
+
+    private fun checkAndMerge(current: List<PlainDomainField>, existing: List<PlainDomainField>) =
+        checkAndMerge(
+            current,
+            existing,
+            { it.name },
+            { type, deprecated -> type.copy(deprecated = deprecated) },
+            { t -> t.id },
+            { t, i -> t.copy(id = i) }) { t1, t2 ->
+            check(t1.typeName == t2.typeName) { "field type is not allowed to change for ${t1.name}, ${t1.typeName} vs ${t2.typeName}, create a new field instead" }
+            check(
+                (t1.length ?: 0) >= (t2.length ?: 0)
+            ) { "length is not allowed to be more strict for ${t1.name}, ${t1.length} vs ${t2.length}, change to a bigger number" }
+        }
+
+    private fun <T> checkAndMerge(
+        current: List<T>, existing: List<T>,
+        nameProvider: (T) -> String,
+        deprecatedConsumer: Function2<T, Boolean, T> = { t: T, b: Boolean -> t },
+        idProvider: Function1<T, Int?>? = null,
+        idConsumer: Function2<T, Int, T>? = null,
+        postAction: Function2<T, T, Unit>? = null,
+    ): List<T> {
+        val latest = current.map { currentType ->
+            val name = nameProvider(currentType)
+            val existingType = existing.singleOrNull { nameProvider(it) == name }
+            if (existingType != null) {
+                // check and set id
+                val enriched = if (idProvider != null && idConsumer != null) {
+                    val currentId = idProvider.invoke(currentType)
+                    val existingId = idProvider.invoke(existingType)
+
+                    val candidateId = currentId ?: existingId
+                    check(candidateId == existingId) { "conflict id $currentId vs $existingId found for $name" }
+
+                    candidateId?.let {
+                        idConsumer.invoke(currentType, it)
+                    } ?: currentType
+                } else {
+                    currentType
+                }
+
+                postAction?.invoke(enriched, existingType)
+
+                enriched
+            } else {
+                currentType
+            }
+        }
+
+        val deprecated = existing.filter { existingType ->
+            current.none { nameProvider(it) == nameProvider(existingType) }
+        }.map { deprecatedConsumer.invoke(it, true) }
+
+        return latest + deprecated
+    }
+
+    private fun registerDomainType(domain: PlainDomain) {
+        domain.enums.forEach { type ->
+            val toRegister = GeneratedEnumFieldType(
+                typeName = type.name,
+                packageName = domain.pkgName,
+                values = type.fields
+            )
+            typeRegistry.register(toRegister)
+        }
+
+        domain.types.forEach { type ->
+            registerDomainType(domain.pkgName, type.name, type.fields)
+        }
+
+        domain.messages.forEach { type ->
+            registerDomainType(domain.pkgName, type.name, type.fields)
         }
     }
 
-    private fun checkAndMerge(masterDomain: PlainDomain, generatedDomain: PlainDomain): ResolvedDomain {
-        TODO()
+    private fun registerDomainType(pkgName: String, name: String, fields: List<PlainDomainField>) {
+        val isReadyToRegister = fields.all(this::checkDomainFieldType)
+
+        if (isReadyToRegister) {
+            typeRegistry.register(resolveDomainType(pkgName, name, fields))
+        } else {
+            lazyTypes.put(name, lazy { resolveDomainType(pkgName, name, fields) })
+        }
     }
 
-    private fun nextFieldId(fields: List<PlainDomainField>): Int {
-        return fields.maxOf { field -> field.id ?: 0 } + 1
+    private fun resolveDomainType(pkgName: String, name: String, fields: List<PlainDomainField>): GeneratedFieldType {
+        val resolvedFields = fields.map { f ->
+            resolveDomainFieldType(f)
+        }
+
+        return GeneratedFieldType(
+            typeName = name,
+            packageName = pkgName,
+            isEnum = false,
+            isComposite = resolvedFields.all { it.isComposite },
+            fields = resolvedFields
+        )
     }
 
-    private fun resolveDomain(plainDomain: PlainDomain, updateId: Boolean = false): ResolvedDomain {
-        val typeFieldIdCounter =
-            plainDomain.types.associateBy({ type -> type.name }) { type -> AtomicInt(nextFieldId(type.fields)) }
+    private fun checkDomainFieldType(plainDomainField: PlainDomainField): Boolean {
+        val typeName = plainDomainField.typeName.removeSuffix(ARRAY_SUFFIX)
+
+        return typeRegistry.tryGet(typeName) != null
+    }
+
+    private fun resolveDomain(plainDomain: PlainDomain, createIdIfAbsent: Boolean = true): ResolvedDomain {
+        val fieldIdCounter = buildMap<String, AtomicInt> {
+            putAll(plainDomain.types.associateBy({ type -> type.name }) { type ->
+                AtomicInt(type.fields.maxOf { it.id ?: 0 })
+            })
+
+            putAll(plainDomain.messages.associateBy({ type -> type.name }) { type ->
+                AtomicInt(type.fields.maxOf { it.id ?: 0 })
+            })
+        }
+
+        val enumValueCounter = plainDomain.enums.associateBy({ type -> type.name }) { type ->
+            AtomicInt(type.fields.maxOf { it.value ?: 0 })
+        }
 
         val messageIdCounter = AtomicInt(plainDomain.messages.maxOf { m -> m.id ?: 0 })
 
@@ -40,25 +226,53 @@ class DefaultDomainResolver(
             types = plainDomain.types.map { type ->
                 DomainType<ResolvedDomainField>(
                     name = type.name,
-                    fields = type.fields.map { f -> resolveDomainField(f, typeFieldIdCounter[type.name]!!, updateId) }
+                    fields = type.fields.map { f ->
+                        resolveDomainField(
+                            f,
+                            fieldIdCounter[type.name]!!,
+                            createIdIfAbsent
+                        )
+                    }
                 )
             },
-            enums = plainDomain.enums,
+            enums = plainDomain.enums.map { type ->
+                DomainType<DomainEnumField>(
+                    name = type.name,
+                    fields = type.fields.map { f ->
+                        DomainEnumField(
+                            name = f.name,
+                            value = f.value ?: enumValueCounter[type.name]!!.incrementAndGet()
+                        )
+                    }
+                )
+            },
             interfaces = plainDomain.interfaces.map { type ->
                 DomainInterface<ResolvedDomainField>(
                     name = type.name,
-                    fields = type.fields.map { f -> resolveDomainField(f, typeFieldIdCounter[type.name]!!, updateId) }
+                    fields = type.fields.map { f ->
+                        resolveDomainField(
+                            f,
+                            null,
+                            createIdIfAbsent
+                        )
+                    }
                 )
             },
             messages = plainDomain.messages.map { type ->
                 DomainMessage<ResolvedDomainField>(
-                    id = if (updateId && type.id == null) {
+                    id = if (createIdIfAbsent && type.id == null) {
                         messageIdCounter.incrementAndGet()
                     } else {
                         type.id
                     },
                     name = type.name,
-                    fields = type.fields.map { f -> resolveDomainField(f, typeFieldIdCounter[type.name]!!, updateId) }
+                    fields = type.fields.map { f ->
+                        resolveDomainField(
+                            f,
+                            fieldIdCounter[type.name]!!,
+                            createIdIfAbsent
+                        )
+                    }
                 )
             },
         )
@@ -66,10 +280,36 @@ class DefaultDomainResolver(
 
     private fun resolveDomainField(
         plainDomainField: PlainDomainField,
-        counter: AtomicInt,
-        updateId: Boolean
+        counter: AtomicInt?,
+        createId: Boolean
     ): ResolvedDomainField {
-        TODO()
+        return ResolvedDomainField(
+            id = if (createId && plainDomainField.id == null && counter != null) {
+                counter.incrementAndGet()
+            } else {
+                plainDomainField.id
+            },
+            name = plainDomainField.name,
+            type = resolveDomainFieldType(plainDomainField),
+            deprecated = plainDomainField.deprecated
+        )
+    }
+
+    private fun resolveDomainFieldType(plainDomainField: PlainDomainField): DomainFieldType {
+        val typeName = plainDomainField.typeName.removeSuffix(ARRAY_SUFFIX)
+
+        val type = checkNotNull(
+            typeRegistry.tryGet(typeName) ?: lazyTypes[typeName]?.value
+        ) { "no type found from registry by name: $typeName" }
+
+        if (plainDomainField.typeName.endsWith(ARRAY_SUFFIX)) {
+            return ArrayFieldTypeWrapper(
+                delegateType = type,
+                fixedLength = plainDomainField.length
+            )
+        }
+
+        return type
     }
 
     private fun parseLatest() = domainProvider.invoke()

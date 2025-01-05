@@ -1,6 +1,5 @@
 package io.kofa.platform.codegen.parser.xml
 
-import io.kofa.platform.codegen.domain.PlainDomainField
 import io.kofa.platform.codegen.xsd.generated.Domain
 import jakarta.xml.bind.JAXBContext
 import jakarta.xml.bind.JAXBIntrospector
@@ -34,16 +33,18 @@ abstract class AbstractXmlDomainParser {
         val importPaths = import.split(",").map { it.trim() }
 
         // Resolve each import path to a URL
-        return importPaths.map { path ->
-            // Try to resolve as a classpath resource first
-            val classpathUrl = this::class.java.classLoader.getResource(path)
-            classpathUrl
-                ?: // If not found in classpath, try to resolve as a file path
-                try {
-                    Paths.get(path).toUri().toURL()
-                } catch (_: Exception) {
-                    throw IllegalArgumentException("Resource not found in classpath or file system: $path")
-                }
-        }
+        return importPaths.map(this::resolveUrl)
+    }
+
+    protected fun resolveUrl(path: String): URL {
+        // Try to resolve as a classpath resource first
+        val classpathUrl = this::class.java.classLoader.getResource(path)
+        return classpathUrl
+            ?: // If not found in classpath, try to resolve as a file path
+            try {
+                Paths.get(path).toUri().toURL()
+            } catch (_: Exception) {
+                throw IllegalArgumentException("Resource not found in classpath or file system: $path")
+            }
     }
 }

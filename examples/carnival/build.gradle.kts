@@ -32,7 +32,13 @@ task(name = "generateSbeMessages", type = JavaExec::class) {
         "sbe.target.language" to "Java",
         "sbe.validation.stop.on.error" to "true",
         "sbe.xinclude.aware" to "true",
-        "sbe.validation.xsd" to "src/main/resources/sbe/sbe.xsd"
+        "sbe.validation.xsd" to "../../platform/platform-codegen/src/main/resources/xsd/sbe.xsd"
     )
     args = listOf("src/main/resources/domain/domain-sbe.xml")
+}
+
+tasks {
+    named("compileKotlin") {
+        dependsOn("generateSbeMessages")
+    }
 }

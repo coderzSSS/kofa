@@ -10,7 +10,7 @@ sealed interface DomainFieldType {
     val isGenerated: Boolean
     val isComposite: Boolean
     val isFixed: Boolean get() = fixedLength != null
-    val fixedLength: Int?
+    val fixedLength: Int? get() = null
     val isSbeType: Boolean get() = isEnum || isBoolean || isPrimitive || isComposite
-    val sbeType: String?
+    val sbeType: String? get() = null
 }
