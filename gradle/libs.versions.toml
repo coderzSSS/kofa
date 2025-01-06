@@ -9,7 +9,7 @@ junit = "5.11.0-RC1"
 koin = "4.0.0-RC1"
 kotest = "5.9.1"
 # @pin
-kotlin = "2.0.20"
+kotlin = "2.1.0"
 kotlinxCoroutine = "1.9.0"
 
 [plugins]
@@ -21,6 +21,7 @@ versionCatalogUpdate = "nl.littlerobots.version-catalog-update:0.8.4"
 versions = "com.github.ben-manes.versions:0.51.0"
 
 [libraries]
+ksp = { module = "com.google.devtools.ksp:symbol-processing-api", version = "2.1.0-1.0.29" }
 kotinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
 kotinpoet-ksp = { module = "com.squareup:kotlinpoet-ksp", version.ref = "kotlinpoet" }
 aeron-all = { module = "io.aeron:aeron-all", version.ref = "aeron" }
@@ -37,6 +38,7 @@ junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "jun
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
 junit-kotest = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
 junit-platform-launcher = "org.junit.platform:junit-platform-launcher:1.11.0-RC1"
+kotlinCompileTestingKsp = "com.github.tschuchortdev:kotlin-compile-testing-ksp:1.6.0"
 koin = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 kotlin-bom = { module = "org.jetbrains.kotlin:kotlin-bom", version.ref = "kotlin" }
 kotlin-logging = "io.github.oshai:kotlin-logging:7.0.0"

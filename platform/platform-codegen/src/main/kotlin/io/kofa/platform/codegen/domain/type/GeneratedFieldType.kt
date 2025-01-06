@@ -5,6 +5,7 @@ data class GeneratedFieldType(
     override val packageName: String,
     override val isEnum: Boolean,
     override val isComposite: Boolean,
+    val isMessage: Boolean,
     val fields: List<DomainFieldType>
 ): DomainFieldType {
     override val isArray: Boolean get() = false

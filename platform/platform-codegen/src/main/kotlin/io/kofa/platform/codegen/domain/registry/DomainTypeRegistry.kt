@@ -16,6 +16,10 @@ class DomainTypeRegistry {
         check(customTypes.putIfAbsent(type.typeName, type) == null) { "type $type is already registered" }
     }
 
+    fun registerIfAbsent(type: DomainFieldType) {
+        customTypes.putIfAbsent(type.typeName, type)
+    }
+
     fun tryGet(typeName: String): DomainFieldType? {
         return buildInJavaTypes[typeName.uppercase()] ?: customTypes[typeName]
     }

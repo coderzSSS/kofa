@@ -21,6 +21,10 @@ dependencies {
     implementation(rootProject.libs.kotinpoet)
     implementation(rootProject.libs.kotinpoet.ksp)
 
+    implementation(rootProject.libs.ksp)
+
+    testImplementation(rootProject.libs.kotlinCompileTestingKsp)
+
     implementation("jakarta.xml.bind:jakarta.xml.bind-api:4.0.2")
     runtimeOnly("org.glassfish.jaxb:jaxb-runtime:4.0.5")
 }

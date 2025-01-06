@@ -164,25 +164,27 @@ class DefaultDomainResolver(
         }
 
         domain.types.forEach { type ->
-            registerDomainType(domain.pkgName, type.name, type.fields)
+            registerDomainType(false, domain.pkgName, type.name, type.fields)
         }
 
         domain.messages.forEach { type ->
-            registerDomainType(domain.pkgName, type.name, type.fields)
+            registerDomainType(true, domain.pkgName, type.name, type.fields)
         }
+
+        lazyTypes.forEach { entry -> typeRegistry.register(entry.value.value) }
     }
 
-    private fun registerDomainType(pkgName: String, name: String, fields: List<PlainDomainField>) {
+    private fun registerDomainType(isMessage: Boolean, pkgName: String, name: String, fields: List<PlainDomainField>) {
         val isReadyToRegister = fields.all(this::checkDomainFieldType)
 
         if (isReadyToRegister) {
-            typeRegistry.register(resolveDomainType(pkgName, name, fields))
+            typeRegistry.register(resolveDomainType(isMessage, pkgName, name, fields))
         } else {
-            lazyTypes.put(name, lazy { resolveDomainType(pkgName, name, fields) })
+            lazyTypes.put(name, lazy { resolveDomainType(isMessage, pkgName, name, fields) })
         }
     }
 
-    private fun resolveDomainType(pkgName: String, name: String, fields: List<PlainDomainField>): GeneratedFieldType {
+    private fun resolveDomainType(isMessage: Boolean, pkgName: String, name: String, fields: List<PlainDomainField>): GeneratedFieldType {
         val resolvedFields = fields.map { f ->
             resolveDomainFieldType(f)
         }
@@ -192,6 +194,7 @@ class DefaultDomainResolver(
             packageName = pkgName,
             isEnum = false,
             isComposite = resolvedFields.all { it.isComposite },
+            isMessage = isMessage,
             fields = resolvedFields
         )
     }
@@ -299,7 +302,7 @@ class DefaultDomainResolver(
         val typeName = plainDomainField.typeName.removeSuffix(ARRAY_SUFFIX)
 
         val type = checkNotNull(
-            typeRegistry.tryGet(typeName) ?: lazyTypes[typeName]?.value
+            typeRegistry.tryGet(typeName)
         ) { "no type found from registry by name: $typeName" }
 
         if (plainDomainField.typeName.endsWith(ARRAY_SUFFIX)) {
