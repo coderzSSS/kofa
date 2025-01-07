@@ -25,7 +25,9 @@ abstract class AbstractMessageBusService<T: Any>: EventDispatcher, InjectContext
 
     open suspend fun onShutdown() {}
 
-    open suspend fun onException(e: Throwable) {}
+    open suspend fun onException(e: Throwable) {
+        throw e
+    }
 
     override fun <T : Any> getOrNull(clazz: KClass<T>, name: String?): T? {
         return injectContext.get<T>(clazz, name)

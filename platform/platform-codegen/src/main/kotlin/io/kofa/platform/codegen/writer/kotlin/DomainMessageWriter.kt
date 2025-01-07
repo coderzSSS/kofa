@@ -1,52 +1,96 @@
 package io.kofa.platform.codegen.writer.kotlin
 
-import com.google.devtools.ksp.processing.CodeGenerator
-import com.google.devtools.ksp.processing.Dependencies
-import com.google.devtools.ksp.processing.KSPLogger
-import com.squareup.kotlinpoet.ksp.writeTo
 import com.squareup.kotlinpoet.*
-import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import io.kofa.platform.codegen.domain.DomainEnumField
 import io.kofa.platform.codegen.domain.DomainType
 import io.kofa.platform.codegen.domain.ResolvedDomain
 import io.kofa.platform.codegen.domain.ResolvedDomainField
-import io.kofa.platform.codegen.domain.type.*
 
-class DomainMessageWriter(private val logger: KSPLogger, private val codeGenerator: CodeGenerator) {
-    fun generateDomainMessage(domain: ResolvedDomain) {
+class DomainMessageWriter {
+    fun generateDomainMessageFileSpec(domain: ResolvedDomain): FileSpec {
         checkNotNull(domain.pkgName) { "domain package name must be provided" }
         checkNotNull(domain.domainName) { "domain name must be provided" }
         check(domain.messages.isNotEmpty()) { "domain messages must be defined" }
 
-        val fileSpecBuilder = FileSpec.builder(domain.pkgName, domain.domainName)
+        val sealedMessageType =
+            TypeSpec.interfaceBuilder(KotlinGeneratorUtils.getSealedDomainMessageName(domain.domainName))
+                .addModifiers(KModifier.SEALED).build()
+        val sealedMessageTypeName = KotlinGeneratorUtils.getSealedDomainMessageClassName(domain)
+
+        val fileSpecBuilder = FileSpec.builder(domain.pkgName, domain.domainName + "Messages")
             .addFileComment("GENERATED FILE, DO NOT EDIT")
+            .addType(sealedMessageType)
             .addTypes(domain.enums.map { type -> generateDomainEnum(type) })
-            .addTypes(domain.types.map { type -> generateDomainMessage(type.name, type.fields, false, true) })
-            .addTypes(domain.types.map { type -> generateDomainMessage(type.name, type.fields, false, false) })
-            .addTypes(domain.messages.map { type -> generateDomainMessage(type.name, type.fields, true, true) })
-            .addTypes(domain.messages.map { type -> generateDomainMessage(type.name, type.fields, true, false) })
+            .addTypes(domain.types.map { type -> generateDomainEvent(domain, type.name, type.fields, false) })
+            .addTypes(domain.types.map { type -> generateMutableDomainMessage(domain, type.name, type.fields, false) })
+            .addTypes(domain.messages.map { type ->
+                generateDomainEvent(
+                    domain,
+                    type.name,
+                    type.fields,
+                    true,
+                    sealedMessageTypeName
+                )
+            })
+            .addTypes(domain.messages.map { type ->
+                generateMutableDomainMessage(
+                    domain,
+                    type.name,
+                    type.fields,
+                    true
+                )
+            })
 
-        val fileSpec = fileSpecBuilder.build()
-        logger.info("generating domain messages to ${fileSpec.relativePath}")
-
-        fileSpec.writeTo(codeGenerator, Dependencies.ALL_FILES)
+        return fileSpecBuilder.build()
     }
 
-    private fun generateDomainMessage(
+    private fun generateDomainEvent(
+        domain: ResolvedDomain,
         name: String,
         fields: List<ResolvedDomainField>,
         isMessage: Boolean,
-        mutable: Boolean
+        interfaceTypeName: TypeName? = null
     ): TypeSpec {
-        val messageTypeSpecBuilder = TypeSpec.classBuilder(resolveTypeClassName(name, isMessage, mutable))
-            .addModifiers(KModifier.DATA)
+        val clazzName = ClassName(domain.pkgName, KotlinGeneratorUtils.resolveTypeClassName(name, isMessage, false))
+
+        val typeSpecBuilder = TypeSpec.interfaceBuilder(clazzName)
+
+        interfaceTypeName?.let {
+            typeSpecBuilder.addSuperinterface(it)
+        }
+        fields.forEach { field ->
+            val typeName = KotlinGeneratorUtils.resolveTypeName(field.type, isMessage, false, true)
+            typeSpecBuilder.addProperty(field.name, typeName)
+        }
+
+        return typeSpecBuilder.addFunction(
+            FunSpec.builder("duplicate")
+                .returns(clazzName)
+                .build()
+        ).build()
+    }
+
+    private fun generateMutableDomainMessage(
+        domain: ResolvedDomain,
+        name: String,
+        fields: List<ResolvedDomainField>,
+        isMessage: Boolean
+    ): TypeSpec {
+        val eventInterfaceClassName =
+            ClassName(domain.pkgName, KotlinGeneratorUtils.resolveTypeClassName(name, isMessage, false))
+
+        val messageClassName = ClassName(domain.pkgName, KotlinGeneratorUtils.resolveTypeClassName(name, isMessage, true))
+
+        val messageTypeSpecBuilder = TypeSpec.classBuilder(messageClassName)
+                .addModifiers(KModifier.DATA)
+                .addSuperinterface(eventInterfaceClassName)
 
         val primaryConstructorBuilder = FunSpec.constructorBuilder()
 
         fields.forEach { field ->
-            val typeName = resolveTypeName(field.type, isMessage, mutable, true)
+            val typeName = KotlinGeneratorUtils.resolveTypeName(field.type, isMessage, true, true)
 
-            val parameterBuilder = ParameterSpec.builder(field.name, typeName)
+            val parameterBuilder = ParameterSpec.builder(field.name, typeName).addModifiers(KModifier.OVERRIDE)
             if (typeName.isNullable) {
                 parameterBuilder.defaultValue("null")
             }
@@ -55,57 +99,21 @@ class DomainMessageWriter(private val logger: KSPLogger, private val codeGenerat
 
             messageTypeSpecBuilder.addProperty(
                 PropertySpec.builder(field.name, typeName)
+                    .addModifiers(KModifier.OVERRIDE)
                     .initializer(field.name)
-                    .mutable(mutable)
+                    .mutable(true)
                     .build()
             )
         }
 
+        messageTypeSpecBuilder.addFunction(
+            FunSpec.builder("duplicate")
+                .addModifiers(KModifier.OVERRIDE)
+                .returns(messageClassName)
+                .addStatement("return copy()")
+                .build()
+        )
         return messageTypeSpecBuilder.build()
-    }
-
-    private fun resolveTypeName(fieldType: DomainFieldType, isMessage: Boolean, mutable: Boolean, nullable: Boolean): TypeName {
-        val listClassName = if (mutable) {
-            MUTABLE_LIST
-        } else {
-            LIST
-        }
-
-        val typeName = when (fieldType) {
-            is JavaBuiltinType -> fieldType.javaClass.asTypeName()
-            is GeneratedFieldType -> ClassName(fieldType.packageName, resolveTypeClassName(fieldType.typeName, isMessage, mutable))
-            is GeneratedEnumFieldType -> ClassName(fieldType.packageName, resolveTypeClassName(fieldType.typeName, isMessage, mutable))
-            is ArrayFieldTypeWrapper -> listClassName.parameterizedBy(
-                resolveTypeName(
-                    fieldType.delegateType,
-                    isMessage,
-                    mutable,
-                    nullable
-                )
-            )
-        }
-
-        return if (!fieldType.isPrimitive && typeName.isNullable != nullable) {
-            typeName.copy(nullable = nullable)
-        } else {
-            typeName
-        }
-    }
-
-    private fun resolveTypeClassName(typeName: String, isMessage: Boolean, mutable: Boolean): String {
-        return if (isMessage) {
-            if (mutable) {
-                typeName + "Message"
-            } else {
-                typeName + "Event"
-            }
-        } else {
-            if (mutable) {
-                "Mutable$typeName"
-            } else {
-                typeName
-            }
-        }
     }
 
     private fun generateDomainEnum(definition: DomainType<DomainEnumField>): TypeSpec {

@@ -21,7 +21,9 @@ dependencies {
     implementation(rootProject.libs.kotinpoet)
     implementation(rootProject.libs.kotinpoet.ksp)
 
-    implementation(rootProject.libs.ksp)
+    compileOnly(rootProject.libs.ksp)
+
+    implementation(project(":platform:platform-api"))
 
     testImplementation(rootProject.libs.kotlinCompileTestingKsp)
 
