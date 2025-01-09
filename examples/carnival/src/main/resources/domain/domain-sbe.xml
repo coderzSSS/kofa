@@ -18,11 +18,16 @@
             <validValue name="VALUE_2">2</validValue>
             <validValue name="VALUE_3">3</validValue>
         </enum>
+        <composite name="SampleType">
+            <type name="a" primitiveType="int64"/>
+            <type name="b" primitiveType="int64"/>
+        </composite>
     </types>
 
     <sbe:message name="SampleSimple" id="1" description="Simple sample">
         <field name="sequence" id="1" type="Sequence"/>
         <field name="enumField" id="2" type="SampleEnum"/>
+        <field name="compositeField" id="4" type="SampleType"/>
         <data name="message" id="3" type="varStringEncoding"/>
     </sbe:message>
 

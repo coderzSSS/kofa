@@ -73,6 +73,7 @@ class XmlDomainParser : AbstractXmlDomainParser() {
                 name = type.name,
                 fields = type.fields.field.map { field ->
                     PlainDomainField(
+                        id = field.id?.toInt(),
                         name = field.name,
                         typeName = field.type,
                         length = field.maxLength?.toInt(),

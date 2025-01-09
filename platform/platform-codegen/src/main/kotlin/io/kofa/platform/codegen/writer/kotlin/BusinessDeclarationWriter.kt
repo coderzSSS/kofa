@@ -1,6 +1,8 @@
 package io.kofa.platform.codegen.writer.kotlin
 
+import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.getConstructors
+import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
@@ -12,8 +14,10 @@ import io.kofa.platform.codegen.domain.ResolvedDomain
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.businessDeclarationClassName
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.messageHandlerClassName
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.sealedDomainMessageClassName
+import io.kofa.platform.codegen.writer.kotlin.KspUtils.asKsType
+import io.kofa.platform.codegen.writer.kotlin.KspUtils.isAssignableFrom
 
-class BusinessDeclarationWriter {
+class BusinessDeclarationWriter(private val resolver: Resolver) {
     data class ComponentConfig(
         val componentType: String,
         val handlerClass: KSClassDeclaration,
@@ -47,12 +51,12 @@ class BusinessDeclarationWriter {
 
             val functions = config.moduleClass.getAllFunctions()
                 .filter { f ->
-                    //TODO: fix me: resolved KSType is not a kotlin class
-                    f.parameters.isEmpty() && f.returnType?.resolve()?.equals(ComponentModuleDeclaration::class) == true
+                    f.parameters.isEmpty() && f.returnType?.resolve()
+                        ?.equals(ComponentModuleDeclaration::class.asKsType(resolver)) == true
                 }.toList()
 
             if (functions.isNotEmpty()) {
-                val isObject = config.moduleClass.classKind == ClassKind.OBJECT
+                val isObject = config.moduleClass.classKind == ClassKind.OBJECT || config.moduleClass.isCompanionObject
                 val statement = if (isObject) {
                     "%T"
                 } else {
@@ -69,10 +73,35 @@ class BusinessDeclarationWriter {
                 }
             }
 
-            val injectMember = MemberName("io.kofa.platform.api.dsl", "inject")
+            if (config.handlerClass.getAllSuperTypes()
+                    .any { type -> type.isAssignableFrom(domain.messageHandlerClassName(), resolver) }
+            ) {
+                val bindMember = MemberName("org.koin.dsl", "bind")
+                val constructorParameterSize = config.handlerClass.primaryConstructor?.parameters?.size ?: 0
+                val parameterStatement = if (constructorParameterSize > 0) {
+                    "get(), ".repeat(constructorParameterSize).removeSuffix(", ")
+                } else {
+                    ""
+                }
 
-            builder.addStatement("withEventDispatcher(%M<%N>())", injectMember, domain.messageHandlerClassName())
+                builder.beginControlFlow("install")
+                builder.add(
+                    CodeBlock.builder()
+                        .beginControlFlow("scoped")
+                        .addStatement("%T($parameterStatement)", config.handlerClass.toClassName())
+                        .endControlFlow()
+                        .add("%M(%T::class)", bindMember, domain.messageHandlerClassName())
+                        .build()
+                )
+                builder.endControlFlow()
 
+                val injectMember = MemberName("io.kofa.platform.api.dsl", "inject")
+                builder.addStatement("withEventDispatcher(%M<%N>())", injectMember, domain.messageHandlerClassName())
+            } else {
+                // TODO: add individual event handlers
+            }
+
+            // end component dsl
             builder.endControlFlow()
         }
 

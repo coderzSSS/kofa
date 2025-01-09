@@ -184,16 +184,26 @@ class DefaultDomainResolver(
         }
     }
 
-    private fun resolveDomainType(isMessage: Boolean, pkgName: String, name: String, fields: List<PlainDomainField>): GeneratedFieldType {
+    private fun resolveDomainType(
+        isMessage: Boolean,
+        pkgName: String,
+        name: String,
+        fields: List<PlainDomainField>
+    ): GeneratedFieldType {
         val resolvedFields = fields.map { f ->
-            resolveDomainFieldType(f)
+            ResolvedDomainField(
+                name = f.name,
+                id = f.id,
+                type = resolveDomainFieldType(f),
+                deprecated = f.deprecated
+            )
         }
 
         return GeneratedFieldType(
             typeName = name,
             packageName = pkgName,
             isEnum = false,
-            isComposite = resolvedFields.all { it.isComposite },
+            isComposite = resolvedFields.all { it.type.isComposite },
             isMessage = isMessage,
             fields = resolvedFields
         )
