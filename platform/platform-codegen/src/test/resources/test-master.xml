@@ -36,6 +36,7 @@
                 <field name="value" type="TypeA"/>
                 <field name="int1" type="int"/>
                 <field name="value2" type="TypeA"/>
+                <field name="bool1" type="bool"/>
             </fields>
         </message>
 

@@ -20,6 +20,7 @@ class SbeMessageXmlWriter {
         val tf = TransformerFactory.newInstance()
         val transformer = tf.newTransformer()
         transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes")
+        transformer.setOutputProperty(OutputKeys.INDENT, "yes")
         transformer.transform(DOMSource(doc), StreamResult(writer))
 
         return writer
@@ -59,8 +60,11 @@ class SbeMessageXmlWriter {
     private fun loadDefaultSbeTypesElement(): Element {
         val result = this::class.java.classLoader.getResourceAsStream("sbe-common-types.xml")?.use { stream ->
             val factory = DocumentBuilderFactory.newInstance()
+            factory.isIgnoringElementContentWhitespace = true
+
             val builder = factory.newDocumentBuilder()
             val document = builder.parse(stream)
+
             document.documentElement
         }
 
