@@ -22,12 +22,22 @@
         </type>
     </types>
 
-    <messages>
+    <enums>
+        <enum name="SampleEnum">
+            <item name="A"/>
+            <item name="B"/>
+        </enum>
+    </enums>
 
+    <messages>
         <message name="CommonMessage">
+            <implements>
+                <interface name="CommonInterface"/>
+            </implements>
             <fields>
-                <field name="fieldA" type="string"/>
-                <field name="fieldB" type="string"/>
+                <field name="fieldB" type="string" description="override parent"/>
+                <field name="fieldC" type="CommonType"/>
+                <field name="fieldD" type="SampleEnum"/>
             </fields>
         </message>
 

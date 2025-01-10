@@ -169,4 +169,11 @@ class XmlDomainParser : AbstractXmlDomainParser() {
 
         return fields.associateBy { field -> field.name }.values.toList()
     }
+
+    private operator fun List<PlainDomainField>.plus(values: List<PlainDomainField>): List<PlainDomainField> {
+        return buildList {
+            addAll(this@plus)
+            addAll(values.filter { v1 -> this@plus.none { v2 -> v1.name == v2.name } })
+        }
+    }
 }

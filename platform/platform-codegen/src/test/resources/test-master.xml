@@ -19,6 +19,7 @@
             <fields>
                 <field name="fieldA" type="string"/>
                 <field name="fieldB" type="string"/>
+                <field name="fieldC" type="SampleEnum"/>
             </fields>
         </type>
     </types>
@@ -33,6 +34,8 @@
             <fields>
                 <field name="name" type="string"/>
                 <field name="value" type="TypeA"/>
+                <field name="int1" type="int"/>
+                <field name="value2" type="TypeA"/>
             </fields>
         </message>
 

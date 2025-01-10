@@ -5,6 +5,7 @@ import io.kofa.platform.api.codec.DirectBufferCodec
 import io.kofa.platform.codegen.domain.ResolvedDomain
 import io.kofa.platform.codegen.domain.type.DomainFieldType
 import io.kofa.platform.codegen.domain.type.GeneratedFieldType
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.flattenFieldName
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.messageClassName
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.messageCodecClassName
 import org.agrona.DirectBuffer
@@ -101,15 +102,15 @@ class DomainMessageCodecWriter {
         if (fieldType.isPrimitive || fieldType.isEnum || fieldType.isBoolean) {
             builder.addStatement("%1N.%2N(%3N.%2N)", typeEncoderName, fieldName, valueName)
         } else if (fieldType is GeneratedFieldType) {
-            fieldType.fields.forEach { field ->
+            fieldType.fields.forEach { entry ->
                 val typeFieldName = if (fieldType.isMessage) {
-                    flattenFieldName(fieldName, field.name)
+                    flattenFieldName(fieldName, entry.key)
                 } else {
                     fieldName
                 }
 
                 val fieldTypeEncoderName =
-                    if (!field.type.isPrimitive && !field.type.isEnum && !field.type.isBoolean) {
+                    if (!entry.value.isPrimitive && !entry.value.isEnum && !entry.value.isBoolean) {
                         val name = "${typeFieldName}Encoder";
                         builder.addStatement("val ${typeFieldName}Encoder = $typeEncoderName.${typeFieldName}()")
                         name
@@ -121,8 +122,8 @@ class DomainMessageCodecWriter {
                     buildEncodeFieldCodeBlock(
                         fieldTypeEncoderName,
                         "$valueName.$fieldName",
-                        field.name,
-                        field.type
+                        entry.key,
+                        entry.value
                     )
                 )
             }
@@ -155,16 +156,6 @@ class DomainMessageCodecWriter {
 
     private fun decoderPropertyName(name: String) =
         name.replaceFirstChar { if (it.isUpperCase()) it.lowercase() else it.toString() } + "Decoder"
-
-    private fun flattenFieldName(vararg name: String): String {
-        return buildString {
-            val iterator = name.iterator()
-            append(iterator.next())
-            while (iterator.hasNext()) {
-                append(iterator.next().replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() })
-            }
-        }
-    }
 
     companion object {
         const val MESSAGE_HEADER_NAME = "MessageHeader"

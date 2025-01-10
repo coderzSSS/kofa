@@ -9,7 +9,7 @@ data class GeneratedFieldType(
     override val isEnum: Boolean,
     override val isComposite: Boolean,
     val isMessage: Boolean,
-    val fields: List<ResolvedDomainField>,
+    val fields: Map<String, DomainFieldType>,
     val originClass: KClass<*>? = null
 ) : DomainFieldType {
     override val isArray: Boolean get() = false

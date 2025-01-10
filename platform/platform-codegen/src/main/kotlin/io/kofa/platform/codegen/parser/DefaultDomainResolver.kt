@@ -7,6 +7,9 @@ import io.kofa.platform.codegen.domain.type.ArrayFieldTypeWrapper
 import io.kofa.platform.codegen.domain.type.DomainFieldType
 import io.kofa.platform.codegen.domain.type.GeneratedEnumFieldType
 import io.kofa.platform.codegen.domain.type.GeneratedFieldType
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.findEnumByName
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.findMessageByName
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.findTypeByName
 
 class DefaultDomainResolver(
     private val domainProvider: () -> PlainDomain,
@@ -29,9 +32,55 @@ class DefaultDomainResolver(
             plainDomain
         }
 
+        finalDomain.imports.forEach { domain ->
+            registerDomainType(domain)
+        }
+
         registerDomainType(finalDomain)
 
-        return resolveDomain(finalDomain)
+        val resolved = resolveDomain(finalDomain)
+
+        return populateDomain(resolved)
+    }
+
+    private fun populateDomain(domain: ResolvedDomain): ResolvedDomain {
+
+        val importedEnums = getImportedEnumNames(domain).map { name -> checkNotNull(domain.findEnumByName(name)) { "missing enum definition for $name" } }
+        val importedTypes = getImportedTypeNames(domain).map { name -> checkNotNull(domain.findTypeByName(name)) { "missing type definition for $name" } }
+        val importedMessages = getImportedMessageNames(domain).map { name -> checkNotNull(domain.findMessageByName(name)) { "missing message definition for $name" } }
+
+        return domain.copy(
+            enums = domain.enums + importedEnums,
+            types = domain.types + importedTypes,
+            messages = domain.messages + importedMessages
+        )
+    }
+
+    private fun getImportedMessageNames(domain: ResolvedDomain): List<String> {
+        return domain.messages.flatMap { message ->
+            message.fields.filter { field -> field.type is GeneratedFieldType && field.type.isMessage  }
+                .map { field -> field.type.typeName }.distinct()
+        }.distinct() - domain.messages.map { type -> type.name }
+    }
+
+    private fun getImportedTypeNames(domain: ResolvedDomain): List<String> {
+        return domain.messages.flatMap { message ->
+            message.fields.filter { field -> field.type is GeneratedFieldType && !field.type.isMessage }
+                .map { field -> field.type.typeName }.distinct()
+        }.distinct() + domain.types.flatMap { message ->
+            message.fields.filter { field -> field.type is GeneratedFieldType && !field.type.isMessage }
+                .map { field -> field.type.typeName }.distinct()
+        }.distinct() - domain.types.map { type -> type.name }
+    }
+
+    private fun getImportedEnumNames(domain: ResolvedDomain): List<String> {
+        return domain.messages.flatMap { message ->
+            message.fields.filter { field -> field.type.isEnum && field.type.isGenerated }
+                .map { field -> field.type.typeName }.distinct()
+        }.distinct() + domain.types.flatMap { message ->
+            message.fields.filter { field -> field.type.isEnum && field.type.isGenerated }
+                .map { field -> field.type.typeName }.distinct()
+        }.distinct() - domain.enums.map { type -> type.name }
     }
 
     private fun checkAndMerge(masterDomain: PlainDomain, generatedDomain: PlainDomain): PlainDomain {
@@ -77,7 +126,8 @@ class DefaultDomainResolver(
     private fun checkAndMergeTypes(
         current: List<DomainType<PlainDomainField>>,
         existing: List<DomainType<PlainDomainField>>
-    ) = checkAndMerge(current, existing, { it.name }) { t1, t2 ->
+    ) = checkAndMerge(
+        current, existing, { it.name }) { t1, t2 ->
         checkAndMerge(t1.fields, t2.fields)
     }
 
@@ -190,20 +240,13 @@ class DefaultDomainResolver(
         name: String,
         fields: List<PlainDomainField>
     ): GeneratedFieldType {
-        val resolvedFields = fields.map { f ->
-            ResolvedDomainField(
-                name = f.name,
-                id = f.id,
-                type = resolveDomainFieldType(f),
-                deprecated = f.deprecated
-            )
-        }
+        val resolvedFields = fields.associateBy({ it.name }) { f -> resolveDomainFieldType(f) }
 
         return GeneratedFieldType(
             typeName = name,
             packageName = pkgName,
             isEnum = false,
-            isComposite = resolvedFields.all { it.type.isComposite },
+            isComposite = resolvedFields.values.all { it.isComposite },
             isMessage = isMessage,
             fields = resolvedFields
         )
