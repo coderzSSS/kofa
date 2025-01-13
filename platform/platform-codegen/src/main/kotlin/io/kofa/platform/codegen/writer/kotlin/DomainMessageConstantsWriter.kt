@@ -21,7 +21,7 @@ class DomainMessageConstantsWriter {
                 FunSpec.builder("tryGetDomainClass")
                     .addModifiers(KModifier.OVERRIDE)
                     .addParameter(PARAM_NAME_EVENT_TYPE, Int::class)
-                    .returns(KClass::class.star())
+                    .returns(KClass::class.star().copy(nullable = true))
                     .addCode(buildGetDomainClassCodeBlock(domain))
                     .build()
             )
@@ -46,12 +46,12 @@ class DomainMessageConstantsWriter {
         domain.messages.forEach { message ->
             typeSpecBuilder.addProperty(
                 PropertySpec.builder(message.metaPropertyName(), MessageMeta::class)
-                    .initializer("%T(%N, %N, %S)", MessageMeta::class, message.id, 0, domain.domainName)
+                    .initializer("%T(%L, %L, %S)", MessageMeta::class, message.id, 0, domain.domainName)
                     .build()
             )
         }
 
-        return fileSpecBuilder.build()
+        return fileSpecBuilder.addType(typeSpecBuilder.build()).build()
     }
 
     private fun buildGetDomainClassCodeBlock(domain: ResolvedDomain): CodeBlock {
@@ -59,7 +59,7 @@ class DomainMessageConstantsWriter {
         builder.beginControlFlow("return when (%N)", PARAM_NAME_EVENT_TYPE)
 
         domain.messages.forEach { message ->
-            builder.addStatement("%N -> %T::class", message.id, message.eventClassName(domain))
+            builder.addStatement("%L -> %T::class", message.id, message.eventClassName(domain))
         }
 
         builder.addStatement("else -> null")
@@ -87,7 +87,7 @@ class DomainMessageConstantsWriter {
         builder.beginControlFlow("return when (%N)", PARAM_NAME_EVENT_TYPE)
 
         domain.messages.forEach { message ->
-            builder.addStatement("%N -> %N", message.id, message.metaPropertyName())
+            builder.addStatement("%L -> %N", message.id, message.metaPropertyName())
         }
 
         builder.addStatement("else -> null")

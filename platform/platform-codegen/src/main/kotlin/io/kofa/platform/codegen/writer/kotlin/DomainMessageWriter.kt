@@ -5,6 +5,8 @@ import io.kofa.platform.codegen.domain.DomainEnumField
 import io.kofa.platform.codegen.domain.DomainType
 import io.kofa.platform.codegen.domain.ResolvedDomain
 import io.kofa.platform.codegen.domain.ResolvedDomainField
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.cap
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.simpleClassName
 
 class DomainMessageWriter {
     fun generateDomainMessageFileSpec(domain: ResolvedDomain): FileSpec {
@@ -17,10 +19,10 @@ class DomainMessageWriter {
                 .addModifiers(KModifier.SEALED).build()
         val sealedMessageTypeName = KotlinGeneratorUtils.getSealedDomainMessageClassName(domain)
 
-        val fileSpecBuilder = FileSpec.builder(domain.pkgName, domain.domainName + "Messages")
+        val fileSpecBuilder = FileSpec.builder(domain.pkgName, domain.domainName.cap() + "Messages")
             .addFileComment("GENERATED FILE, DO NOT EDIT")
             .addType(sealedMessageType)
-            .addTypes(domain.enums.map { type -> generateDomainEnum(type) })
+            .addTypes(domain.enums.map { type -> generateDomainEnum(domain, type) })
             .addTypes(domain.types.map { type -> generateDomainEvent(domain, type.name, type.fields, false) })
             .addTypes(domain.types.map { type -> generateMutableDomainMessage(domain, type.name, type.fields, false) })
             .addTypes(domain.messages.map { type ->
@@ -59,12 +61,13 @@ class DomainMessageWriter {
             typeSpecBuilder.addSuperinterface(it)
         }
         fields.forEach { field ->
-            val typeName = KotlinGeneratorUtils.resolveTypeName(field.type, isMessage, false, true)
+            val typeName = KotlinGeneratorUtils.resolveTypeName(domain, field.type, false, true)
             typeSpecBuilder.addProperty(field.name, typeName)
         }
 
         return typeSpecBuilder.addFunction(
             FunSpec.builder("duplicate")
+                .addModifiers(KModifier.ABSTRACT)
                 .returns(clazzName)
                 .build()
         ).build()
@@ -79,18 +82,19 @@ class DomainMessageWriter {
         val eventInterfaceClassName =
             ClassName(domain.pkgName, KotlinGeneratorUtils.resolveTypeClassName(name, isMessage, false))
 
-        val messageClassName = ClassName(domain.pkgName, KotlinGeneratorUtils.resolveTypeClassName(name, isMessage, true))
+        val messageClassName =
+            ClassName(domain.pkgName, KotlinGeneratorUtils.resolveTypeClassName(name, isMessage, true))
 
         val messageTypeSpecBuilder = TypeSpec.classBuilder(messageClassName)
-                .addModifiers(KModifier.DATA)
-                .addSuperinterface(eventInterfaceClassName)
+            .addModifiers(KModifier.DATA)
+            .addSuperinterface(eventInterfaceClassName)
 
         val primaryConstructorBuilder = FunSpec.constructorBuilder()
 
         fields.forEach { field ->
-            val typeName = KotlinGeneratorUtils.resolveTypeName(field.type, isMessage, true, true)
+            val typeName = KotlinGeneratorUtils.resolveTypeName(domain, field.type, true, true)
 
-            val parameterBuilder = ParameterSpec.builder(field.name, typeName).addModifiers(KModifier.OVERRIDE)
+            val parameterBuilder = ParameterSpec.builder(field.name, typeName)
             if (typeName.isNullable) {
                 parameterBuilder.defaultValue("null")
             }
@@ -106,35 +110,38 @@ class DomainMessageWriter {
             )
         }
 
-        messageTypeSpecBuilder.addFunction(
-            FunSpec.builder("duplicate")
-                .addModifiers(KModifier.OVERRIDE)
-                .returns(messageClassName)
-                .addStatement("return copy()")
-                .build()
-        )
+        messageTypeSpecBuilder
+            .primaryConstructor(primaryConstructorBuilder.build())
+            .addFunction(
+                FunSpec.builder("duplicate")
+                    .addModifiers(KModifier.OVERRIDE)
+                    .returns(messageClassName)
+                    .addStatement("return copy()")
+                    .build()
+            )
         return messageTypeSpecBuilder.build()
     }
 
-    private fun generateDomainEnum(definition: DomainType<DomainEnumField>): TypeSpec {
+    private fun generateDomainEnum(domain: ResolvedDomain, definition: DomainType<DomainEnumField>): TypeSpec {
         check(definition.fields.isNotEmpty()) { "missing fields for enum ${definition.name}" }
 
-        val enumTypeSpecBuilder = TypeSpec.enumBuilder(definition.name)
+        val descTypeName = String::class.asTypeName().copy(nullable = true)
+        val enumTypeSpecBuilder = TypeSpec.enumBuilder(domain.simpleClassName(definition.name))
             .primaryConstructor(
                 FunSpec.constructorBuilder()
-                    .addParameter("value", Int::class)
+                    .addParameter(CODE_NAME, Int::class)
                     .addParameter(
-                        ParameterSpec.builder("desc", String::class.asTypeName().copy(nullable = true))
+                        ParameterSpec.builder(DESC_NAME, descTypeName)
                             .defaultValue("null")
                             .build()
                     )
                     .build()
             )
             .addProperty(
-                PropertySpec.builder("desc", String::class).initializer("desc").build()
+                PropertySpec.builder(CODE_NAME, Int::class).initializer(CODE_NAME).build()
             )
             .addProperty(
-                PropertySpec.builder("value", Int::class).initializer("value").build()
+                PropertySpec.builder(DESC_NAME, descTypeName).initializer(DESC_NAME).build()
             )
 
         definition.fields.forEach { field ->
@@ -142,11 +149,16 @@ class DomainMessageWriter {
             enumTypeSpecBuilder.addEnumConstant(
                 field.name,
                 TypeSpec.anonymousClassBuilder()
-                    .addSuperclassConstructorParameter("%N", field.value)
+                    .addSuperclassConstructorParameter("%L", field.value)
                     .build()
             )
         }
 
         return enumTypeSpecBuilder.build()
+    }
+
+    companion object {
+        const val CODE_NAME = "code"
+        const val DESC_NAME = "desc"
     }
 }

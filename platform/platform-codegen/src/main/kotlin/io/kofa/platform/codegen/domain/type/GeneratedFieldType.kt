@@ -1,6 +1,5 @@
 package io.kofa.platform.codegen.domain.type
 
-import io.kofa.platform.codegen.domain.ResolvedDomainField
 import kotlin.reflect.KClass
 
 data class GeneratedFieldType(

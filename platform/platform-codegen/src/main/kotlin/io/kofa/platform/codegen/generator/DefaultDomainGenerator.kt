@@ -12,8 +12,8 @@ import io.kofa.platform.codegen.writer.kotlin.DomainMessageConstantsWriter
 import io.kofa.platform.codegen.writer.kotlin.DomainMessageHandlerWriter
 import io.kofa.platform.codegen.writer.kotlin.DomainMessageWriter
 
-abstract class DomainGenerator(private val config: DomainGeneratorConfig, private val logger: KSPLogger, private val codeGenerator: CodeGenerator) {
-    protected fun process(domain: ResolvedDomain) {
+class DefaultDomainGenerator(private val config: DomainGeneratorConfig, private val logger: KSPLogger, private val codeGenerator: CodeGenerator) {
+    fun process(domain: ResolvedDomain) {
         if (config.generateSbeOnly) {
             generateSbeOnly(domain)
             return
@@ -33,7 +33,7 @@ abstract class DomainGenerator(private val config: DomainGeneratorConfig, privat
         domainDeclarationFileSpec.writeTo(codeGenerator, Dependencies.ALL_FILES)
         logger.info("file ${domainDeclarationFileSpec.relativePath} generated")
 
-        TODO("finish business declaration")
+        // TODO("finish business declaration")
     }
 
     private fun generateSbeOnly(domain: ResolvedDomain) {

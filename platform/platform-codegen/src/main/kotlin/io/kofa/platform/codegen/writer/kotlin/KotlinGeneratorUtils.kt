@@ -11,26 +11,34 @@ import io.kofa.platform.codegen.domain.type.*
 import kotlin.reflect.KClass
 
 object KotlinGeneratorUtils {
-    fun ResolvedDomain.messageHandlerClassName() = ClassName(pkgName, domainName + "MessageHandler")
+    fun ResolvedDomain.messageHandlerClassName() = ClassName(pkgName, domainName.cap() + "MessageHandler")
 
-    fun ResolvedDomain.messageConstantsClassName() = ClassName(pkgName, domainName + "MessageConstants")
+    fun ResolvedDomain.messageConstantsClassName() = ClassName(pkgName, domainName.cap() + "MessageConstants")
 
-    fun ResolvedDomain.messageCodecClassName() = ClassName(pkgName, domainName + "MessageCodec")
+    fun ResolvedDomain.messageCodecClassName() = ClassName(pkgName, domainName.cap() + "MessageCodec")
 
-    fun ResolvedDomain.domainDeclarationClassName() = ClassName(pkgName, domainName + "DomainDeclaration")
+    fun ResolvedDomain.domainDeclarationClassName() = ClassName(pkgName, domainName.cap() + "DomainDeclaration")
 
-    fun ResolvedDomain.businessDeclarationClassName() = ClassName(pkgName, domainName + "BusinessDeclaration")
+    fun ResolvedDomain.businessDeclarationClassName() = ClassName(pkgName, domainName.cap() + "BusinessDeclaration")
+
+    fun ResolvedDomain.simpleClassName(name: String) = ClassName(pkgName, name.cap())
+
+    fun ResolvedDomain.sbeClassName(name: String) = ClassName("$pkgName.sbe", name.cap())
 
     fun ResolvedDomain.sealedDomainMessageClassName() = getSealedDomainMessageClassName(this)
 
     fun getSealedDomainMessageClassName(domain: ResolvedDomain) =
         ClassName(domain.pkgName, getSealedDomainMessageName(domain.domainName))
 
-    fun getSealedDomainMessageName(domainName: String) = domainName + "Message"
+    fun getSealedDomainMessageName(domainName: String) = domainName.cap() + "Message"
+
+    fun isNeedFlatten(fieldType: DomainFieldType): Boolean {
+        return fieldType is GeneratedFieldType && !fieldType.fields.all { e -> e.value.isPrimitive }
+    }
 
     fun resolveTypeName(
+        domain: ResolvedDomain,
         fieldType: DomainFieldType,
-        isMessage: Boolean,
         mutable: Boolean,
         nullable: Boolean
     ): TypeName {
@@ -40,22 +48,24 @@ object KotlinGeneratorUtils {
             LIST
         }
 
+        val isMessage = !isDomainType(domain, fieldType.typeName)
+
         val typeName = when (fieldType) {
-            is JavaBuiltinType -> fieldType.javaClass.asTypeName()
+            is JavaBuiltinType -> fieldType.kClass.asTypeName()
             is GeneratedFieldType -> ClassName(
-                fieldType.packageName,
+                domain.pkgName,
                 resolveTypeClassName(fieldType.typeName, isMessage, mutable)
             )
 
             is GeneratedEnumFieldType -> ClassName(
-                fieldType.packageName,
-                resolveTypeClassName(fieldType.typeName, isMessage, mutable)
+                domain.pkgName,
+                fieldType.typeName
             )
 
             is ArrayFieldTypeWrapper -> listClassName.parameterizedBy(
                 resolveTypeName(
+                    domain,
                     fieldType.delegateType,
-                    isMessage,
                     mutable,
                     nullable
                 )
@@ -69,7 +79,12 @@ object KotlinGeneratorUtils {
         }
     }
 
+    fun isDomainType(domain: ResolvedDomain, typeName: String): Boolean {
+        return domain.types.any { type -> type.name == typeName }
+    }
+
     fun resolveTypeClassName(typeName: String, isMessage: Boolean, mutable: Boolean): String {
+        val typeName = typeName.cap()
         return if (isMessage) {
             if (mutable) {
                 typeName + "Message"
@@ -88,14 +103,18 @@ object KotlinGeneratorUtils {
     fun DomainMessage<*>.metaPropertyName() = "META_${name.uppercase()}"
 
     fun DomainMessage<*>.messageClassName(domain: ResolvedDomain) =
-        ClassName(domain.pkgName, resolveTypeClassName(domain.domainName, true, true))
+        ClassName(domain.pkgName, resolveTypeClassName(name, true, true))
 
     fun DomainMessage<*>.eventClassName(domain: ResolvedDomain) =
-        ClassName(domain.pkgName, resolveTypeClassName(domain.domainName, true, false))
+        ClassName(domain.pkgName, resolveTypeClassName(name, true, false))
 
     fun DomainMessage<*>.eventHandlerName(): String {
-        return "on" + name.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() } + "Event"
+        return "on" + name.cap() + "Event"
     }
+
+    fun String.cap() = replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+
+    fun String.deCap() = replaceFirstChar { if (it.isUpperCase()) it.lowercase() else it.toString() }
 
     fun KClass<*>.star() = asClassName().parameterizedBy(STAR)
 
@@ -104,7 +123,7 @@ object KotlinGeneratorUtils {
             val iterator = name.iterator()
             append(iterator.next())
             while (iterator.hasNext()) {
-                append(iterator.next().replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() })
+                append(iterator.next().cap())
             }
         }
     }
@@ -150,4 +169,6 @@ object KotlinGeneratorUtils {
 
         return result
     }
+
+    fun ResolvedDomain.sbeBooleanType() = sbeClassName("BooleanType")
 }

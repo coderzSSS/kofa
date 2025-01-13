@@ -13,6 +13,7 @@ xjc {
 sourceSets {
     sourceSets.main {
         java.srcDir("build/generated/java")
+        kotlin.srcDir("build/generated/kotlin")
     }
 }
 

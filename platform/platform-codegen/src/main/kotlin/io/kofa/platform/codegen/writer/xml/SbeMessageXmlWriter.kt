@@ -4,6 +4,7 @@ import io.kofa.platform.codegen.domain.*
 import io.kofa.platform.codegen.domain.type.DomainFieldType
 import io.kofa.platform.codegen.domain.type.GeneratedFieldType
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.flattenFieldName
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.isNeedFlatten
 import org.w3c.dom.Document
 import org.w3c.dom.Element
 import java.io.Writer
@@ -34,7 +35,7 @@ class SbeMessageXmlWriter {
         val root = document.createElement("sbe:messageSchema")
         root.setAttribute("xmlns:sbe", "http://fixprotocol.io/2016/sbe")
         root.setAttribute("xmlns:xsi", "http://www.w3.org/2001/XInclude")
-        root.setAttribute("package", domain.pkgName)
+        root.setAttribute("package", domain.pkgName + ".sbe")
         root.setAttribute("id", domain.generateId().toString())
         root.setAttribute("version", domain.generateVersion().toString())
         root.setAttribute("semanticVersion", "5.2")
@@ -216,10 +217,6 @@ class SbeMessageXmlWriter {
                 )
             )
         }
-    }
-
-    private fun isNeedFlatten(fieldType: DomainFieldType): Boolean {
-        return fieldType is GeneratedFieldType && !fieldType.fields.all { e -> e.value.isPrimitive }
     }
 
     private fun buildMessageFieldElement(

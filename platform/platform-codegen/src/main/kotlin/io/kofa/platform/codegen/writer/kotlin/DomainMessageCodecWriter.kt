@@ -5,9 +5,16 @@ import io.kofa.platform.api.codec.DirectBufferCodec
 import io.kofa.platform.codegen.domain.ResolvedDomain
 import io.kofa.platform.codegen.domain.type.DomainFieldType
 import io.kofa.platform.codegen.domain.type.GeneratedFieldType
+import io.kofa.platform.codegen.domain.type.JavaBuiltinType
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.cap
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.deCap
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.flattenFieldName
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.isNeedFlatten
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.messageClassName
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.messageCodecClassName
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.sbeBooleanType
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.sbeClassName
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.simpleClassName
 import org.agrona.DirectBuffer
 import org.agrona.MutableDirectBuffer
 
@@ -16,28 +23,13 @@ class DomainMessageCodecWriter {
         val className = domain.messageCodecClassName()
         val typeSpecBuilder = TypeSpec.classBuilder(className)
             .addSuperinterface(DirectBufferCodec::class)
-            .addProperty(
-                encoderPropertyName(MESSAGE_HEADER_NAME),
-                domain.encoderClassName(MESSAGE_HEADER_NAME),
-                KModifier.PRIVATE
-            )
-            .addProperty(
-                decoderPropertyName(MESSAGE_HEADER_NAME),
-                domain.decoderClassName(MESSAGE_HEADER_NAME),
-                KModifier.PRIVATE
-            )
+            .addProperty(buildCodecProperty(domain, MESSAGE_HEADER_NAME, true))
+            .addProperty(buildCodecProperty(domain, MESSAGE_HEADER_NAME, false))
 
         domain.messages.forEach { message ->
-            typeSpecBuilder.addProperty(
-                encoderPropertyName(message.name),
-                domain.encoderClassName(message.name),
-                KModifier.PRIVATE
-            )
-            typeSpecBuilder.addProperty(
-                decoderPropertyName(message.name),
-                domain.decoderClassName(message.name),
-                KModifier.PRIVATE
-            )
+            typeSpecBuilder
+                .addProperty(buildCodecProperty(domain, message.name, true))
+                .addProperty(buildCodecProperty(domain, message.name, false))
         }
 
         val typeVariable = TypeVariableName("T")
@@ -46,7 +38,7 @@ class DomainMessageCodecWriter {
             FunSpec.builder("encodeToDirectBuffer")
                 .addModifiers(KModifier.OVERRIDE)
                 .addTypeVariable(TypeVariableName("T"))
-                .addParameter("value", typeVariable)
+                .addParameter(VALUE_NAME, typeVariable)
                 .addParameter("byteBuffer", MutableDirectBuffer::class)
                 .addParameter("offset", Int::class)
                 .addCode(buildEncodeCodeBlock(domain))
@@ -61,32 +53,83 @@ class DomainMessageCodecWriter {
                 .addCode(buildDecodeCodeBlock(domain))
                 .returns(typeVariable)
                 .build()
+        ).addFunction(
+            FunSpec.builder(TO_SBE_BOOL_FUN)
+                .addModifiers(KModifier.PRIVATE)
+                .addParameter("value", Boolean::class)
+                .addCode("return if(value) %1T.T else %1T.F", domain.sbeBooleanType())
+                .returns(domain.sbeBooleanType())
+                .build()
         )
+
+        domain.enums.forEach { type ->
+            typeSpecBuilder.addFunction(
+                FunSpec.builder(TO_SBE_ENUM_FUN)
+                    .addModifiers(KModifier.PRIVATE)
+                    .addParameter("value", domain.simpleClassName(type.name))
+                    .addCode("return %1T.entries.single { e -> e.value().toInt() == value.${DomainMessageWriter.CODE_NAME} }", domain.sbeClassName(type.name))
+                    .returns(domain.sbeClassName(type.name))
+                    .build()
+            )
+        }
+
         return FileSpec.builder(className)
             .addType(typeSpecBuilder.build())
             .build()
     }
 
+    private fun buildCodecProperty(domain: ResolvedDomain, name: String, isEncoder: Boolean): PropertySpec {
+        val typeName = if (isEncoder) {
+            domain.encoderClassName(name)
+        } else {
+            domain.decoderClassName(name)
+        }
+
+        val propertyName = if (isEncoder) {
+            encoderPropertyName(name)
+        } else {
+            decoderPropertyName(name)
+        }
+        return PropertySpec.builder(propertyName, typeName)
+            .addModifiers(KModifier.PRIVATE)
+            .initializer("%T()", typeName)
+            .build()
+    }
+
     private fun buildEncodeCodeBlock(domain: ResolvedDomain): CodeBlock {
         val builder = CodeBlock.builder()
-        builder.beginControlFlow("when(value)")
+        builder.beginControlFlow("when(%N)", VALUE_NAME)
         domain.messages.forEach { message ->
             val encoderPropertyName = encoderPropertyName(message.name)
+            val messageHeaderPropertyName = encoderPropertyName(MESSAGE_HEADER_NAME)
             builder.beginControlFlow("is %T -> ", message.messageClassName(domain))
                 .addStatement(
                     "%N.wrapAndApplyHeader(byteBuffer, offset, %N)",
                     encoderPropertyName,
-                    encoderPropertyName(MESSAGE_HEADER_NAME)
+                    messageHeaderPropertyName
                 )
 
             message.fields.forEach { field ->
-                builder.add(buildEncodeFieldCodeBlock(encoderPropertyName, "value", field.name, field.type))
+                val localEncoderVars = mutableSetOf<String>()
+                builder.add(
+                    buildEncodeFieldCodeBlock(
+                        encoderPropertyName,
+                        VALUE_NAME,
+                        field.name,
+                        false,
+                        field.name,
+                        field.type,
+                        domain,
+                        localEncoderVars
+                    )
+                )
             }
 
+            builder.addStatement("return %T.ENCODED_LENGTH + %N.encodedLength()", domain.encoderClassName(MESSAGE_HEADER_NAME), encoderPropertyName)
             builder.endControlFlow()
         }
 
-        builder.addStatement("else -> throw %T(\"unknown value type \$value\")", IllegalArgumentException::class)
+        builder.addStatement("else -> throw %T(\"unknown value type \$$VALUE_NAME}\")", IllegalArgumentException::class)
         builder.endControlFlow()
         return builder.build()
     }
@@ -94,45 +137,94 @@ class DomainMessageCodecWriter {
     private fun buildEncodeFieldCodeBlock(
         typeEncoderName: String,
         valueName: String,
-        fieldName: String,
-        fieldType: DomainFieldType
+        valueFieldName: String,
+        isFieldValueNullable: Boolean,
+        encoderFieldName: String,
+        fieldType: DomainFieldType,
+        domain: ResolvedDomain,
+        localEncoderVars: MutableSet<String>
     ): CodeBlock {
         val builder = CodeBlock.builder()
-        builder.beginControlFlow("if (%N.%N != null)", valueName, fieldName)
-        if (fieldType.isPrimitive || fieldType.isEnum || fieldType.isBoolean) {
-            builder.addStatement("%1N.%2N(%3N.%2N)", typeEncoderName, fieldName, valueName)
-        } else if (fieldType is GeneratedFieldType) {
-            fieldType.fields.forEach { entry ->
-                val typeFieldName = if (fieldType.isMessage) {
-                    flattenFieldName(fieldName, entry.key)
-                } else {
-                    fieldName
-                }
+        val valueStatement = if (isFieldValueNullable) {
+            "%L?"
+        } else {
+            "%L"
+        }
 
+        if (isFieldValueNullable) {
+            builder.beginControlFlow("%L?.%L?.let", valueName, valueFieldName)
+        }
+
+        if (fieldType.isPrimitive || fieldType.isEnum || fieldType.isBoolean || fieldType == JavaBuiltinType.STRING) {
+            var valueStatement = if (isFieldValueNullable) {
+                "it"
+            } else {
+                "%3L.%4L"
+            }
+
+            if (fieldType.isBoolean) {
+                valueStatement = "${TO_SBE_BOOL_FUN}($valueStatement)"
+            } else if (fieldType.isGenerated && fieldType.isEnum) {
+                valueStatement = "${TO_SBE_ENUM_FUN}($valueStatement)"
+            }
+
+            if (isFieldValueNullable) {
+                builder.addStatement("%L.%L($valueStatement)", typeEncoderName, encoderFieldName)
+            } else {
+                builder.addStatement(
+                    "%1L.%2L($valueStatement)",
+                    typeEncoderName,
+                    encoderFieldName,
+                    valueName,
+                    valueFieldName
+                )
+            }
+        } else if (fieldType is GeneratedFieldType) {
+            val needFlatten = isNeedFlatten(fieldType)
+            val fieldTypeName = KotlinGeneratorUtils.resolveTypeName(domain, fieldType, true, true)
+
+            fieldType.fields.forEach { entry ->
                 val fieldTypeEncoderName =
-                    if (!entry.value.isPrimitive && !entry.value.isEnum && !entry.value.isBoolean) {
-                        val name = "${typeFieldName}Encoder";
-                        builder.addStatement("val ${typeFieldName}Encoder = $typeEncoderName.${typeFieldName}()")
+                    if (needFlatten) {
+                        val name = "${valueFieldName.deCap()}${fieldType.typeName.cap()}Encoder";
+                        if (!localEncoderVars.contains(name)) {
+                            builder.addStatement("var $name = $typeEncoderName.${valueFieldName}Count(1)")
+                            localEncoderVars.add(name)
+                        } else {
+                            builder.addStatement("$name = $typeEncoderName.${valueFieldName}Count(1)")
+                        }
                         name
                     } else {
-                        "${typeEncoderName}.$typeFieldName"
+                        "${typeEncoderName}.${valueFieldName}"
                     }
+
+                val typeFieldName = if (needFlatten) {
+                    flattenFieldName(valueFieldName, fieldType.typeName, entry.key)
+                } else {
+                    entry.key
+                }
 
                 builder.add(
                     buildEncodeFieldCodeBlock(
                         fieldTypeEncoderName,
-                        "$valueName.$fieldName",
+                        "$valueName.$valueFieldName",
                         entry.key,
-                        entry.value
+                        fieldTypeName.isNullable,
+                        typeFieldName,
+                        entry.value,
+                        domain,
+                        localEncoderVars,
                     )
                 )
             }
 
         } else {
-            throw IllegalStateException("cannot handle field $fieldName, type $fieldType")
+            throw IllegalStateException("cannot handle field $valueFieldName, type $fieldType")
         }
 
-        builder.endControlFlow()
+        if (isFieldValueNullable) {
+            builder.endControlFlow()
+        }
 
         return builder.build()
     }
@@ -140,24 +232,28 @@ class DomainMessageCodecWriter {
     private fun buildDecodeCodeBlock(domain: ResolvedDomain): CodeBlock {
         val builder = CodeBlock.builder()
 
+        builder.addStatement("TODO()")
         return builder.build()
     }
 
     private fun ResolvedDomain.encoderClassName(name: String): ClassName {
-        return ClassName(pkgName, name + "Encoder")
+        return ClassName("$pkgName.sbe", name.cap() + "Encoder")
     }
 
     private fun ResolvedDomain.decoderClassName(name: String): ClassName {
-        return ClassName(pkgName, name + "Decoder")
+        return ClassName("$pkgName.sbe", name.cap() + "Decoder")
     }
 
     private fun encoderPropertyName(name: String) =
-        name.replaceFirstChar { if (it.isUpperCase()) it.lowercase() else it.toString() } + "Encoder"
+        name.deCap() + "Encoder"
 
     private fun decoderPropertyName(name: String) =
-        name.replaceFirstChar { if (it.isUpperCase()) it.lowercase() else it.toString() } + "Decoder"
+        name.deCap() + "Decoder"
 
     companion object {
         const val MESSAGE_HEADER_NAME = "MessageHeader"
+        const val VALUE_NAME = "obj"
+        const val TO_SBE_BOOL_FUN = "toSbeBooleanType"
+        const val TO_SBE_ENUM_FUN = "toSbeEnumType"
     }
 }
