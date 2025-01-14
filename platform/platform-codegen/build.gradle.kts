@@ -1,5 +1,6 @@
 plugins {
     id("com.github.bjornvester.xjc") version "1.8.2"
+    idea
 }
 
 xjc {
@@ -14,6 +15,13 @@ sourceSets {
     sourceSets.main {
         java.srcDir("build/generated/java")
         kotlin.srcDir("build/generated/kotlin")
+    }
+}
+
+idea {
+    module {
+        generatedSourceDirs.add(file("build/generated/java"))
+        generatedSourceDirs.add(file("build/generated/kotlin"))
     }
 }
 

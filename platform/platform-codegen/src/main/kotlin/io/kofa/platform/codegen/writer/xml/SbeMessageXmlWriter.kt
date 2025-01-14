@@ -249,5 +249,5 @@ class SbeMessageXmlWriter {
         return domainName.chars().sum()
     }
 
-    private fun ResolvedDomain.generateVersion() = 0
+    private fun ResolvedDomain.generateVersion() = version
 }

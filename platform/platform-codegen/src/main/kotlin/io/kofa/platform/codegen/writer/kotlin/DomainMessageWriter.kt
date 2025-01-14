@@ -61,7 +61,7 @@ class DomainMessageWriter {
             typeSpecBuilder.addSuperinterface(it)
         }
         fields.forEach { field ->
-            val typeName = KotlinGeneratorUtils.resolveTypeName(domain, field.type, false, true)
+            val typeName = KotlinGeneratorUtils.resolveTypeName(domain, field.type, false)
             typeSpecBuilder.addProperty(field.name, typeName)
         }
 
@@ -92,7 +92,7 @@ class DomainMessageWriter {
         val primaryConstructorBuilder = FunSpec.constructorBuilder()
 
         fields.forEach { field ->
-            val typeName = KotlinGeneratorUtils.resolveTypeName(domain, field.type, true, true)
+            val typeName = KotlinGeneratorUtils.resolveTypeName(domain, field.type, true)
 
             val parameterBuilder = ParameterSpec.builder(field.name, typeName)
             if (typeName.isNullable) {

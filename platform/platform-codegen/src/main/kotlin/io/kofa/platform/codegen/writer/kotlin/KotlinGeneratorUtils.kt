@@ -2,15 +2,15 @@ package io.kofa.platform.codegen.writer.kotlin
 
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import io.kofa.platform.codegen.domain.DomainEnumField
-import io.kofa.platform.codegen.domain.DomainMessage
-import io.kofa.platform.codegen.domain.DomainType
-import io.kofa.platform.codegen.domain.ResolvedDomain
-import io.kofa.platform.codegen.domain.ResolvedDomainField
+import io.kofa.platform.codegen.domain.*
 import io.kofa.platform.codegen.domain.type.*
 import kotlin.reflect.KClass
 
 object KotlinGeneratorUtils {
+    fun ResolvedDomain.eventClassName(name: String) = ClassName(pkgName, resolveTypeClassName(name, true, false))
+
+    fun ResolvedDomain.messageClassName(name: String) = ClassName(pkgName, resolveTypeClassName(name, true, true))
+
     fun ResolvedDomain.messageHandlerClassName() = ClassName(pkgName, domainName.cap() + "MessageHandler")
 
     fun ResolvedDomain.messageConstantsClassName() = ClassName(pkgName, domainName.cap() + "MessageConstants")
@@ -22,6 +22,22 @@ object KotlinGeneratorUtils {
     fun ResolvedDomain.businessDeclarationClassName() = ClassName(pkgName, domainName.cap() + "BusinessDeclaration")
 
     fun ResolvedDomain.simpleClassName(name: String) = ClassName(pkgName, name.cap())
+
+    fun ResolvedDomain.generatedClassName(fieldType: DomainFieldType): ClassName {
+        return when (fieldType) {
+            is GeneratedFieldType -> {
+                return if (!fieldType.isMessage) {
+                    ClassName(pkgName, resolveTypeClassName(fieldType.typeName, false, true))
+                } else {
+                    ClassName(pkgName, resolveTypeClassName(fieldType.typeName, true, true))
+                }
+            }
+
+            is GeneratedEnumFieldType -> simpleClassName(fieldType.typeName)
+
+            else -> throw IllegalStateException("Unsupported field type $fieldType")
+        }
+    }
 
     fun ResolvedDomain.sbeClassName(name: String) = ClassName("$pkgName.sbe", name.cap())
 
@@ -39,8 +55,7 @@ object KotlinGeneratorUtils {
     fun resolveTypeName(
         domain: ResolvedDomain,
         fieldType: DomainFieldType,
-        mutable: Boolean,
-        nullable: Boolean
+        mutable: Boolean
     ): TypeName {
         val listClassName = if (mutable) {
             MUTABLE_LIST
@@ -66,14 +81,13 @@ object KotlinGeneratorUtils {
                 resolveTypeName(
                     domain,
                     fieldType.delegateType,
-                    mutable,
-                    nullable
+                    mutable
                 )
             )
         }
 
-        return if (!fieldType.isPrimitive && typeName.isNullable != nullable) {
-            typeName.copy(nullable = nullable)
+        return if (!fieldType.isPrimitive && typeName.isNullable != fieldType.isNullable) {
+            typeName.copy(nullable = fieldType.isNullable)
         } else {
             typeName
         }
