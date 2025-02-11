@@ -6,13 +6,13 @@ import com.google.devtools.ksp.processing.KSPLogger
 import com.squareup.kotlinpoet.ksp.writeTo
 import io.kofa.platform.codegen.domain.ResolvedDomain
 import io.kofa.platform.codegen.writer.java.SbeCodecGenerator
-import io.kofa.platform.codegen.writer.kotlin.DomainDeclarationWriter
-import io.kofa.platform.codegen.writer.kotlin.DomainMessageCodecWriter
-import io.kofa.platform.codegen.writer.kotlin.DomainMessageConstantsWriter
-import io.kofa.platform.codegen.writer.kotlin.DomainMessageHandlerWriter
-import io.kofa.platform.codegen.writer.kotlin.DomainMessageWriter
+import io.kofa.platform.codegen.writer.kotlin.*
 
-class DefaultDomainGenerator(private val config: DomainGeneratorConfig, private val logger: KSPLogger, private val codeGenerator: CodeGenerator) {
+class DefaultDomainGenerator(
+    private val config: DomainGeneratorConfig,
+    private val logger: KSPLogger,
+    private val codeGenerator: CodeGenerator
+) {
     fun process(domain: ResolvedDomain) {
         if (config.generateSbeOnly) {
             generateSbeOnly(domain)
@@ -32,8 +32,6 @@ class DefaultDomainGenerator(private val config: DomainGeneratorConfig, private 
         val domainDeclarationFileSpec = DomainDeclarationWriter().generate(domain)
         domainDeclarationFileSpec.writeTo(codeGenerator, Dependencies.ALL_FILES)
         logger.info("file ${domainDeclarationFileSpec.relativePath} generated")
-
-        // TODO("finish business declaration")
     }
 
     private fun generateSbeOnly(domain: ResolvedDomain) {

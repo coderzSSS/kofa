@@ -11,8 +11,10 @@ kotest = "5.9.1"
 # @pin
 kotlin = "2.1.0"
 kotlinxCoroutine = "1.9.0"
+ksp = "2.1.0-1.0.29"
 
 [plugins]
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 dokka = "org.jetbrains.dokka:1.9.20"
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
@@ -21,7 +23,7 @@ versionCatalogUpdate = "nl.littlerobots.version-catalog-update:0.8.4"
 versions = "com.github.ben-manes.versions:0.51.0"
 
 [libraries]
-ksp = { module = "com.google.devtools.ksp:symbol-processing-api", version = "2.1.0-1.0.29" }
+ksp = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 kotinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
 kotinpoet-ksp = { module = "com.squareup:kotlinpoet-ksp", version.ref = "kotlinpoet" }
 aeron-all = { module = "io.aeron:aeron-all", version.ref = "aeron" }
@@ -52,6 +54,7 @@ logback = "ch.qos.logback:logback-classic:1.4.12"
 mockk = "io.mockk:mockk:1.13.12"
 picocli = "info.picocli:picocli:4.7.6"
 slf4j-api = "org.slf4j:slf4j-api:2.1.0-alpha1"
+jaxb = "org.glassfish.jaxb:jaxb-runtime:4.0.5"
 
 [bundles]
 backend-main = [

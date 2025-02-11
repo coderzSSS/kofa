@@ -1,6 +1,7 @@
 plugins {
     id("com.github.bjornvester.xjc") version "1.8.2"
     idea
+    kotlin("kapt")
 }
 
 xjc {
@@ -13,15 +14,17 @@ xjc {
 
 sourceSets {
     sourceSets.main {
-        java.srcDir("build/generated/java")
-        kotlin.srcDir("build/generated/kotlin")
+        java.srcDir("build/generated/ksp/main/java")
+    }
+
+    sourceSets.test {
+        java.srcDir("build/generated/ksp/test/java")
     }
 }
 
 idea {
     module {
-        generatedSourceDirs.add(file("build/generated/java"))
-        generatedSourceDirs.add(file("build/generated/kotlin"))
+        generatedSourceDirs.add(file("build/generated/ksp/test/java"))
     }
 }
 
@@ -30,12 +33,16 @@ dependencies {
     implementation(rootProject.libs.kotinpoet)
     implementation(rootProject.libs.kotinpoet.ksp)
 
-    compileOnly(rootProject.libs.ksp)
+    implementation(rootProject.libs.ksp)
 
     implementation(project(":platform:platform-api"))
+
+    compileOnly(rootProject.libs.autoServiceAnnotation)
+    annotationProcessor(rootProject.libs.autoService)
+    kapt(rootProject.libs.autoService)
 
     testImplementation(rootProject.libs.kotlinCompileTestingKsp)
 
     implementation("jakarta.xml.bind:jakarta.xml.bind-api:4.0.2")
-    runtimeOnly("org.glassfish.jaxb:jaxb-runtime:4.0.5")
+    runtimeOnly(rootProject.libs.jaxb)
 }

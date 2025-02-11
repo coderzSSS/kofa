@@ -1,6 +1,12 @@
 plugins {
+    alias(libs.plugins.ksp)
     kotlin("kapt")
+    idea
     application
+}
+
+ksp {
+    arg("kofa.domain.master", file("src/main/resources/carnival-master.xml").absolutePath)
 }
 
 application {
@@ -10,6 +16,14 @@ application {
 sourceSets {
     sourceSets.main {
         java.srcDir("build/generated/java")
+        kotlin.srcDir("build/generated/kotlin")
+    }
+}
+
+idea {
+    module {
+        generatedSourceDirs.add(file("build/generated/java"))
+        generatedSourceDirs.add(file("build/generated/kotlin"))
     }
 }
 
@@ -21,6 +35,8 @@ dependencies {
     compileOnly(rootProject.libs.autoServiceAnnotation)
     annotationProcessor(rootProject.libs.autoService)
     kapt(rootProject.libs.autoService)
+    ksp(project(":platform:platform-codegen"))
+    runtimeOnly(libs.jaxb)
 }
 
 task(name = "generateSbeMessages", type = JavaExec::class) {

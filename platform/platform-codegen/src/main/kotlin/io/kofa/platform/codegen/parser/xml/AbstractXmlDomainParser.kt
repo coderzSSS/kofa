@@ -36,7 +36,11 @@ abstract class AbstractXmlDomainParser {
         return importPaths.map(this::resolveUrl)
     }
 
-    protected fun resolveUrl(path: String): URL {
+    fun resolveUrl(path: String): URL {
+        return checkNotNull(tryResolveUrl(path)) { "Resource not found in classpath or file system: $path" }
+    }
+
+    fun tryResolveUrl(path: String): URL? {
         // Try to resolve as a classpath resource first
         val classpathUrl = this::class.java.classLoader.getResource(path)
         return classpathUrl
@@ -44,7 +48,7 @@ abstract class AbstractXmlDomainParser {
             try {
                 Paths.get(path).toUri().toURL()
             } catch (_: Exception) {
-                throw IllegalArgumentException("Resource not found in classpath or file system: $path")
+                null
             }
     }
 }

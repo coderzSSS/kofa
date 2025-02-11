@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<domain xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        name="carnival"
+        package="io.kofa.example.carnival.generated"
+        xsi:noNamespaceSchemaLocation="../../../../../platform/platform-codegen/src/main/resources/xsd/domain-master.xsd">
+    <messages>
+        <message name="Banana">
+            <fields>
+                <field name="name" type="string"/>
+            </fields>
+        </message>
+
+        <message name="Apple">
+            <fields>
+                <field name="name" type="string"/>
+            </fields>
+        </message>
+    </messages>
+</domain>

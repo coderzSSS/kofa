@@ -1,4 +1,5 @@
 import org.jetbrains.dokka.gradle.DokkaMultiModuleTask
+import org.jetbrains.kotlin.gradle.dsl.KotlinBaseExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 plugins {
@@ -75,7 +76,7 @@ configure(kotlinProjects) {
         }
     }
 
-    configure<org.jetbrains.kotlin.gradle.dsl.KotlinTopLevelExtension> {
+    configure<KotlinBaseExtension> {
         jvmToolchain(17)
     }
 }

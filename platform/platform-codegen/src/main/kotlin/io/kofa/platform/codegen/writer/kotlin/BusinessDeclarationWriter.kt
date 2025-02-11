@@ -1,6 +1,5 @@
 package io.kofa.platform.codegen.writer.kotlin
 
-import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.ClassKind
@@ -9,22 +8,23 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import io.kofa.platform.api.dsl.BusinessDeclaration
-import io.kofa.platform.api.inject.ComponentModuleDeclaration
+import io.kofa.platform.api.util.EventContext
 import io.kofa.platform.codegen.domain.ResolvedDomain
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.businessDeclarationClassName
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.eventClassName
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.messageClassName
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.messageHandlerClassName
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.sealedDomainMessageClassName
 import io.kofa.platform.codegen.writer.kotlin.KspUtils.asKsType
-import io.kofa.platform.codegen.writer.kotlin.KspUtils.isAssignableFrom
 
 class BusinessDeclarationWriter(private val resolver: Resolver) {
-    data class ComponentConfig(
+    data class ComponentTypeConfig(
         val componentType: String,
         val handlerClass: KSClassDeclaration,
         val moduleClass: KSClassDeclaration
     )
 
-    fun generate(domain: ResolvedDomain, componentList: List<ComponentConfig>): FileSpec {
+    fun generate(domain: ResolvedDomain, componentList: List<ComponentTypeConfig>): FileSpec {
         val clazzName = domain.businessDeclarationClassName()
         return FileSpec.builder(clazzName)
             .addType(
@@ -38,8 +38,9 @@ class BusinessDeclarationWriter(private val resolver: Resolver) {
             .build()
     }
 
-    private fun buildDslCodeBlock(domain: ResolvedDomain, componentList: List<ComponentConfig>): CodeBlock {
+    private fun buildDslCodeBlock(domain: ResolvedDomain, componentList: List<ComponentTypeConfig>): CodeBlock {
         val builder = CodeBlock.builder()
+        builder.beginControlFlow("")
 
         val componentMap = componentList.associateBy { c -> c.componentType }
 
@@ -51,8 +52,7 @@ class BusinessDeclarationWriter(private val resolver: Resolver) {
 
             val functions = config.moduleClass.getAllFunctions()
                 .filter { f ->
-                    f.parameters.isEmpty() && f.returnType?.resolve()
-                        ?.equals(ComponentModuleDeclaration::class.asKsType(resolver)) == true
+                    f.parameters.isEmpty() && f.returnType?.resolve()?.declaration?.qualifiedName?.asString() == "io.kofa.platform.api.inject.ComponentModuleDeclaration"
                 }.toList()
 
             if (functions.isNotEmpty()) {
@@ -69,42 +69,94 @@ class BusinessDeclarationWriter(private val resolver: Resolver) {
                 builder.addStatement("val module = $statement", config.moduleClass.toClassName())
 
                 functions.forEach { f ->
-                    builder.addStatement("install(module.%N())", f.simpleName)
+                    builder.addStatement("install(module.%N())", f.simpleName.asString())
                 }
             }
 
-            if (config.handlerClass.getAllSuperTypes()
-                    .any { type -> type.isAssignableFrom(domain.messageHandlerClassName(), resolver) }
-            ) {
-                val bindMember = MemberName("org.koin.dsl", "bind")
-                val constructorParameterSize = config.handlerClass.primaryConstructor?.parameters?.size ?: 0
-                val parameterStatement = if (constructorParameterSize > 0) {
-                    "get(), ".repeat(constructorParameterSize).removeSuffix(", ")
-                } else {
-                    ""
-                }
+            val isDomainMessageHandler = domain.messageHandlerClassName().asKsType(resolver)?.let {
+                config.handlerClass.asStarProjectedType().isAssignableFrom(it)
+            } == true
 
-                builder.beginControlFlow("install")
-                builder.add(
-                    CodeBlock.builder()
-                        .beginControlFlow("scoped")
-                        .addStatement("%T($parameterStatement)", config.handlerClass.toClassName())
-                        .endControlFlow()
-                        .add("%M(%T::class)", bindMember, domain.messageHandlerClassName())
-                        .build()
-                )
-                builder.endControlFlow()
 
-                val injectMember = MemberName("io.kofa.platform.api.dsl", "inject")
-                builder.addStatement("withEventDispatcher(%M<%N>())", injectMember, domain.messageHandlerClassName())
+            val constructorParameterSize = config.handlerClass.primaryConstructor?.parameters?.size ?: 0
+            val parameterStatement = if (constructorParameterSize > 0) {
+                "get(), ".repeat(constructorParameterSize).removeSuffix(", ")
             } else {
-                // TODO: add individual event handlers
+                ""
+            }
+
+            val dslCodeBuilder = CodeBlock.builder()
+                .beginControlFlow("scoped")
+                .addStatement("%T($parameterStatement)", config.handlerClass.toClassName())
+                .endControlFlow()
+            if (isDomainMessageHandler) {
+                val bindMember = MemberName("org.koin.dsl", "bind")
+                dslCodeBuilder.add(".%M(%T::class)", bindMember, domain.messageHandlerClassName())
+            }
+
+            builder.addStatement("install({")
+            builder.indent().add(dslCodeBuilder.build())
+            builder.unindent().addStatement("})")
+
+            val injectMember = MemberName("io.kofa.platform.api.dsl", "inject")
+
+            if (isDomainMessageHandler) {
+                builder.addStatement("withEventDispatcher(%M<%T>())", injectMember, domain.messageHandlerClassName())
+            } else {
+                builder.addStatement("val handler: %T by %M()", config.handlerClass.toClassName(), injectMember)
+                val domainMessages = domain.messages.flatMap { message -> listOf(domain.messageClassName(message.name), domain.eventClassName(message.name)) }
+
+                val handlerFunctions = config.handlerClass.getAllFunctions().mapNotNull { f ->
+                    val result = if (f.parameters.size == 1) {
+                        val type = f.parameters.first().type.resolve().declaration.qualifiedName?.asString()
+                        if (domainMessages.any { name -> name.canonicalName == type }) {
+                            type!! to f.to(0)
+                        } else {
+                            null
+                        }
+
+                    } else if (f.parameters.size == 2) {
+                        val type1 = f.parameters.first().type.resolve().declaration.qualifiedName?.asString()
+                        val type2 = f.parameters.last().type.resolve().declaration.qualifiedName?.asString()
+                        if (domainMessages.any { name -> name.canonicalName == type1 } && type2 == EventContext::class.qualifiedName) {
+                            type1!! to f.to(0)
+                        } else if (domainMessages.any { name -> name.canonicalName == type2 } && type1 == EventContext::class.qualifiedName) {
+                            type2!! to f.to(1)
+                        } else {
+                            null
+                        }
+                    } else {
+                        null
+                    }
+
+                    result
+                }.toMap()
+
+                handlerFunctions.forEach { e ->
+                    val messageClassName = ClassName.bestGuess(e.key)
+                    builder.addStatement("onEvent(%T::class) { event ->", messageClassName).indent()
+                    val eventParameterIndex = e.value.second
+                    val handlerFunction = e.value.first
+
+                    if (eventParameterIndex == 0 && handlerFunction.parameters.size == 1) {
+                        builder.addStatement("handler.%N(event)", handlerFunction.simpleName.asString())
+                    } else if (eventParameterIndex == 0 && handlerFunction.parameters.size == 2) {
+                        builder.addStatement("handler.%N(event, this)", handlerFunction.simpleName.asString())
+                    } else if (eventParameterIndex == 1) {
+                        builder.addStatement("handler.%N(this, event)", handlerFunction.simpleName.asString())
+                    } else {
+                        throw IllegalStateException("invalid handler function: $handlerFunction")
+                    }
+
+                    builder.unindent().addStatement("}")
+                }
             }
 
             // end component dsl
             builder.endControlFlow()
         }
 
+        builder.endControlFlow()
         return builder.build()
     }
 }
