@@ -59,14 +59,16 @@ class DomainMessageCodecWriter {
                 .addCode(buildDecodeCodeBlock(domain))
                 .returns(typeVariable)
                 .build()
-        ).addFunction(
-            FunSpec.builder(TO_SBE_BOOL_FUN)
-                .addModifiers(KModifier.PRIVATE)
-                .addParameter("value", Boolean::class)
-                .addCode("return if(value) %1T.T else %1T.F", domain.sbeBooleanType())
-                .returns(domain.sbeBooleanType())
-                .build()
-        ).addFunction(
+        )
+        if (domain.messages.any { type -> type.fields.any { f -> f.type.isBoolean } } || domain.types.any { type -> type.fields.any { f -> f.type.isBoolean } }) {
+            typeSpecBuilder.addFunction(
+                FunSpec.builder(TO_SBE_BOOL_FUN)
+                    .addModifiers(KModifier.PRIVATE)
+                    .addParameter("value", Boolean::class)
+                    .addCode("return if(value) %1T.T else %1T.F", domain.sbeBooleanType())
+                    .returns(domain.sbeBooleanType())
+                    .build()
+            ).addFunction(
                 FunSpec.builder(FROM_SBE_BOOL_FUN)
                     .addModifiers(KModifier.PRIVATE)
                     .addParameter("value", domain.sbeBooleanType())
@@ -74,20 +76,27 @@ class DomainMessageCodecWriter {
                     .returns(Boolean::class)
                     .build()
             )
+        }
 
         domain.enums.forEach { type ->
             typeSpecBuilder.addFunction(
                 FunSpec.builder(TO_SBE_ENUM_FUN)
                     .addModifiers(KModifier.PRIVATE)
                     .addParameter("value", domain.simpleClassName(type.name))
-                    .addCode("return %1T.entries.single { e -> e.value().toInt() == value.${DomainMessageWriter.CODE_NAME} }", domain.sbeClassName(type.name))
+                    .addCode(
+                        "return %1T.entries.single { e -> e.value().toInt() == value.${DomainMessageWriter.CODE_NAME} }",
+                        domain.sbeClassName(type.name)
+                    )
                     .returns(domain.sbeClassName(type.name))
                     .build()
             ).addFunction(
                 FunSpec.builder(FROM_SBE_ENUM_FUN)
                     .addModifiers(KModifier.PRIVATE)
                     .addParameter("value", domain.sbeClassName(type.name))
-                    .addCode("return %1T.entries.single { e -> value.value().toInt() == e.${DomainMessageWriter.CODE_NAME} }", domain.simpleClassName(type.name))
+                    .addCode(
+                        "return %1T.entries.single { e -> value.value().toInt() == e.${DomainMessageWriter.CODE_NAME} }",
+                        domain.simpleClassName(type.name)
+                    )
                     .returns(domain.simpleClassName(type.name))
                     .build()
             )
@@ -145,7 +154,11 @@ class DomainMessageCodecWriter {
                 )
             }
 
-            builder.addStatement("return %T.ENCODED_LENGTH + %N.encodedLength()", domain.encoderClassName(MESSAGE_HEADER_NAME), encoderPropertyName)
+            builder.addStatement(
+                "return %T.ENCODED_LENGTH + %N.encodedLength()",
+                domain.encoderClassName(MESSAGE_HEADER_NAME),
+                encoderPropertyName
+            )
             builder.endControlFlow()
         }
 

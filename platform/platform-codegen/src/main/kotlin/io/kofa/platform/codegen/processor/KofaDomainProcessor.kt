@@ -1,14 +1,12 @@
 package io.kofa.platform.codegen.processor
 
 import com.google.devtools.ksp.KspExperimental
-import com.google.devtools.ksp.getKotlinClassByName
 import com.google.devtools.ksp.processing.Dependencies
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessor
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.ksp.writeTo
@@ -20,6 +18,8 @@ import io.kofa.platform.codegen.parser.DefaultDomainResolver
 import io.kofa.platform.codegen.parser.xml.XmlDomainParser
 import io.kofa.platform.codegen.writer.kotlin.BusinessDeclarationWriter
 import java.io.File
+import java.nio.file.Paths
+import kotlin.io.path.Path
 
 class KofaDomainProcessor(private val environment: SymbolProcessorEnvironment) : SymbolProcessor {
     private val logger = environment.logger
@@ -56,20 +56,21 @@ class KofaDomainProcessor(private val environment: SymbolProcessorEnvironment) :
 
     private fun generateDomain(): ResolvedDomain {
         logger.info("OPTIONS: " + environment.options.toString())
+
         val masterDomainXmlFile =
-            checkNotNull(environment.options["kofa.domain.master"]) { "missing domain master file" }
-        val generatedDomainXmlFile = environment.options["kofa.domain.generated"]
+            checkNotNull(environment.getPath("kofa.domain.master")) { "missing domain master file" }
+        val generatedDomainXmlFile = environment.getPath("kofa.domain.generated")
 
         val xmlParser = XmlDomainParser()
 
-        val domainXsd = environment.options["kofa.domain.xsd"]?.let { xsd -> File(xmlParser.resolveUrl(xsd).file) }
+        val domainXsd = environment.getPath("kofa.domain.xsd")?.let { xsd -> File(xmlParser.resolveUrl(xsd).file) }
 
-        val sbeJavaOutputDir = environment.options["kofa.sbeJavaOutputDir"] ?: "build/generated/ksp/main/java"
-        val sbeXmlOutputDir = environment.options["kofa.sbeXmlOutputDir"] ?: "src/main/resources"
+        val sbeJavaOutputDir = environment.getPath("kofa.sbeJavaOutputDir", "build/generated/ksp/main/java")
+        val sbeXmlOutputDir = environment.getPath("kofa.sbeXmlOutputDir", "src/main/resources")
 
         val generatorConfig = DomainGeneratorConfig(
-            sbeJavaOutputDir = sbeJavaOutputDir,
-            sbeXmlOutputDir = sbeXmlOutputDir
+            sbeJavaOutputDir = sbeJavaOutputDir!!,
+            sbeXmlOutputDir = sbeXmlOutputDir!!
         )
 
 
@@ -85,5 +86,14 @@ class KofaDomainProcessor(private val environment: SymbolProcessorEnvironment) :
         DefaultDomainGenerator(generatorConfig, logger, codeGenerator).process(resolvedDomain)
 
         return resolvedDomain
+    }
+
+    private fun SymbolProcessorEnvironment.getPath(option: String, defaultValue: String? = null): String? {
+        val rootDir = options["kofa.rootDir"]
+        val value = options[option] ?: defaultValue
+
+        return if (rootDir == null) value else value?.let {
+            if (Path(it).isAbsolute) it else Paths.get(rootDir, it).toString()
+        }
     }
 }

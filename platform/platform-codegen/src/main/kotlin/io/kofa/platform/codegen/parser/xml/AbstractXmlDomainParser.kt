@@ -13,7 +13,8 @@ import javax.xml.validation.SchemaFactory
 
 abstract class AbstractXmlDomainParser {
     protected fun parseDomain(inputStream: InputStream, xsdFile: File? = null): Domain {
-        val context = JAXBContext.newInstance(Domain::class.java)
+        val context = JAXBContext.newInstance(Domain::class.java.packageName, Domain::class.java.classLoader)
+
         val unmarshaller = context.createUnmarshaller()
 
         val schemaFactory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI)

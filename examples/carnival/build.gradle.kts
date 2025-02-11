@@ -6,7 +6,8 @@ plugins {
 }
 
 ksp {
-    arg("kofa.domain.master", file("src/main/resources/carnival-master.xml").absolutePath)
+    arg("kofa.rootDir", project.projectDir.absolutePath)
+    arg("kofa.domain.master", "src/main/resources/carnival-master.xml")
 }
 
 application {
@@ -36,7 +37,6 @@ dependencies {
     annotationProcessor(rootProject.libs.autoService)
     kapt(rootProject.libs.autoService)
     ksp(project(":platform:platform-codegen"))
-    runtimeOnly(libs.jaxb)
 }
 
 task(name = "generateSbeMessages", type = JavaExec::class) {
