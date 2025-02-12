@@ -1,5 +1,6 @@
 package io.kofa.platform.codegen.writer.kotlin
 
+import com.google.auto.service.AutoService
 import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.ClassKind
@@ -33,6 +34,16 @@ class BusinessDeclarationWriter(private val resolver: Resolver) {
                         BusinessDeclaration::class.asTypeName().parameterizedBy(domain.sealedDomainMessageClassName())
                     )
                     .addSuperclassConstructorParameter(buildDslCodeBlock(domain, componentList))
+                    .addAnnotation(
+                        AnnotationSpec.builder(AutoService::class)
+                            .addMember("%T::class", BusinessDeclaration::class)
+                            .build()
+                    )
+                    .addAnnotation(
+                        AnnotationSpec.builder(SuppressWarnings::class)
+                            .addMember("%S", "rawtypes")
+                            .build()
+                    )
                     .build()
             )
             .build()
@@ -40,7 +51,7 @@ class BusinessDeclarationWriter(private val resolver: Resolver) {
 
     private fun buildDslCodeBlock(domain: ResolvedDomain, componentList: List<ComponentTypeConfig>): CodeBlock {
         val builder = CodeBlock.builder()
-        builder.beginControlFlow("")
+        builder.addStatement("{").indent()
 
         val componentMap = componentList.associateBy { c -> c.componentType }
 
@@ -73,10 +84,7 @@ class BusinessDeclarationWriter(private val resolver: Resolver) {
                 }
             }
 
-            val isDomainMessageHandler = domain.messageHandlerClassName().asKsType(resolver)?.let {
-                config.handlerClass.asStarProjectedType().isAssignableFrom(it)
-            } == true
-
+            val isDomainMessageHandler = domain.messageHandlerClassName().asKsType(resolver)?.isAssignableFrom(config.handlerClass.asStarProjectedType()) == true
 
             val constructorParameterSize = config.handlerClass.primaryConstructor?.parameters?.size ?: 0
             val parameterStatement = if (constructorParameterSize > 0) {
@@ -85,10 +93,14 @@ class BusinessDeclarationWriter(private val resolver: Resolver) {
                 ""
             }
 
-            val dslCodeBuilder = CodeBlock.builder()
-                .beginControlFlow("scoped")
-                .addStatement("%T($parameterStatement)", config.handlerClass.toClassName())
-                .endControlFlow()
+            val dslCodeBuilder = CodeBlock.builder().beginControlFlow("scoped")
+            if (config.handlerClass.classKind == ClassKind.OBJECT) {
+                dslCodeBuilder.addStatement("%T", config.handlerClass.toClassName())
+            } else {
+                dslCodeBuilder.addStatement("%T($parameterStatement)", config.handlerClass.toClassName())
+            }
+
+            dslCodeBuilder.endControlFlow()
             if (isDomainMessageHandler) {
                 val bindMember = MemberName("org.koin.dsl", "bind")
                 dslCodeBuilder.add(".%M(%T::class)", bindMember, domain.messageHandlerClassName())
@@ -103,8 +115,13 @@ class BusinessDeclarationWriter(private val resolver: Resolver) {
             if (isDomainMessageHandler) {
                 builder.addStatement("withEventDispatcher(%M<%T>())", injectMember, domain.messageHandlerClassName())
             } else {
-                builder.addStatement("val handler: %T by %M()", config.handlerClass.toClassName(), injectMember)
-                val domainMessages = domain.messages.flatMap { message -> listOf(domain.messageClassName(message.name), domain.eventClassName(message.name)) }
+
+                val domainMessages = domain.messages.flatMap { message ->
+                    listOf(
+                        domain.messageClassName(message.name),
+                        domain.eventClassName(message.name)
+                    )
+                }
 
                 val handlerFunctions = config.handlerClass.getAllFunctions().mapNotNull { f ->
                     val result = if (f.parameters.size == 1) {
@@ -132,6 +149,10 @@ class BusinessDeclarationWriter(private val resolver: Resolver) {
                     result
                 }.toMap()
 
+                if (handlerFunctions.isNotEmpty()) {
+                    builder.addStatement("val handler: %T by %M()", config.handlerClass.toClassName(), injectMember)
+                }
+
                 handlerFunctions.forEach { e ->
                     val messageClassName = ClassName.bestGuess(e.key)
                     builder.addStatement("onEvent(%T::class) { event ->", messageClassName).indent()
@@ -156,7 +177,7 @@ class BusinessDeclarationWriter(private val resolver: Resolver) {
             builder.endControlFlow()
         }
 
-        builder.endControlFlow()
+        builder.unindent().add("}")
         return builder.build()
     }
 }

@@ -37,7 +37,7 @@ dependencies {
 
     implementation(project(":platform:platform-api"))
 
-    compileOnly(rootProject.libs.autoServiceAnnotation)
+    implementation(rootProject.libs.autoServiceAnnotation)
     annotationProcessor(rootProject.libs.autoService)
     kapt(rootProject.libs.autoService)
 

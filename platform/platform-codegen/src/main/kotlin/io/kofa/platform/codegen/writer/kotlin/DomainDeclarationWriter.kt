@@ -1,10 +1,7 @@
 package io.kofa.platform.codegen.writer.kotlin
 
-import com.squareup.kotlinpoet.ClassName
-import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.FileSpec
-import com.squareup.kotlinpoet.MemberName
-import com.squareup.kotlinpoet.TypeSpec
+import com.google.auto.service.AutoService
+import com.squareup.kotlinpoet.*
 import io.kofa.platform.api.codec.DirectBufferCodec
 import io.kofa.platform.api.dsl.DomainDeclaration
 import io.kofa.platform.api.meta.MessageMetaProvider
@@ -22,6 +19,16 @@ class DomainDeclarationWriter {
                 TypeSpec.classBuilder(clazzName)
                     .superclass(DomainDeclaration::class)
                     .addSuperclassConstructorParameter(buildDslCodeBlock(domain))
+                    .addAnnotation(
+                        AnnotationSpec.builder(AutoService::class)
+                            .addMember("%T::class", DomainDeclaration::class)
+                            .build()
+                    )
+                    .addAnnotation(
+                        AnnotationSpec.builder(SuppressWarnings::class)
+                            .addMember("%S", "rawtypes")
+                            .build()
+                    )
                     .build()
             )
 
@@ -32,7 +39,7 @@ class DomainDeclarationWriter {
         val builder = CodeBlock.builder()
 
         // start dsl
-        builder.beginControlFlow("")
+        builder.addStatement("{").indent()
         builder.addStatement("domain = %S", domain.domainName)
         builder.addStatement("pkg = %S", domain.pkgName)
 
@@ -58,7 +65,7 @@ class DomainDeclarationWriter {
         builder.endControlFlow()
 
         // end dsl
-        builder.endControlFlow()
+        builder.unindent().add("}")
         return builder.build()
     }
 

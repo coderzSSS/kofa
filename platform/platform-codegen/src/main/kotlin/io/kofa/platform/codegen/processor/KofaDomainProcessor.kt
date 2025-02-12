@@ -37,21 +37,23 @@ class KofaDomainProcessor(private val environment: SymbolProcessorEnvironment) :
                     classDeclaration.annotations.filter { it.annotationType.resolve().declaration.qualifiedName?.asString() == DomainModule::class.qualifiedName }
                         .single()
 
-                BusinessDeclarationWriter.ComponentTypeConfig(
+                symbol to BusinessDeclarationWriter.ComponentTypeConfig(
                     componentType = moduleAnnotation.arguments.first().value as String,
                     handlerClass = (moduleAnnotation.arguments.last().value as KSType).declaration as KSClassDeclaration,
                     moduleClass = classDeclaration
                 )
 
-            }.toList()
+            }.toMap()
 
-        if (componentConfigs.isNotEmpty()) {
-            val fileSpec = BusinessDeclarationWriter(resolver).generate(resolvedDomain, componentConfigs)
+        val validComponentConfigs = componentConfigs.values.filter { config -> config.handlerClass.validate() }
+
+        if (validComponentConfigs.isNotEmpty()) {
+            val fileSpec = BusinessDeclarationWriter(resolver).generate(resolvedDomain, validComponentConfigs)
             fileSpec.writeTo(codeGenerator, Dependencies.ALL_FILES)
             logger.info("file ${fileSpec.relativePath} generated")
         }
 
-        return symbols.filterNot { it.validate() }.toList()
+        return symbols.filterNot { it.validate() }.toList() + componentConfigs.filterNot { e -> e.value.handlerClass.validate() }.map { it.key }
     }
 
     private fun generateDomain(): ResolvedDomain {

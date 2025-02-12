@@ -29,8 +29,9 @@ class KofaDomainProcessorTest : FunSpec({
             """
                 package kofa.test.handler
                 import org.lockfast.domain.test.generated.MsgAEvent
+                import org.lockfast.domain.test.generated.TestMessageHandler
                 
-                class MyHandler {
+                class MyHandler: TestMessageHandler() {
                     fun onMyEvent(event: MsgAEvent) {
                         println(event)
                     } 

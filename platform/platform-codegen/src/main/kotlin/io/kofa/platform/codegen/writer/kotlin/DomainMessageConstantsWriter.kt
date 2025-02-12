@@ -5,6 +5,7 @@ import io.kofa.platform.api.meta.MessageMeta
 import io.kofa.platform.api.meta.MessageMetaProvider
 import io.kofa.platform.codegen.domain.ResolvedDomain
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.eventClassName
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.messageClassName
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.messageConstantsClassName
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.metaPropertyName
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.star
@@ -73,7 +74,7 @@ class DomainMessageConstantsWriter {
         builder.beginControlFlow("return when (%N)", PARAM_NAME_EVENT_TYPE)
 
         domain.messages.forEach { message ->
-            builder.addStatement("%T::class -> %N", message.eventClassName(domain), message.metaPropertyName())
+            builder.addStatement("%T::class, %T::class -> %N", message.eventClassName(domain), message.messageClassName(domain), message.metaPropertyName())
         }
 
         builder.addStatement("else -> null")
