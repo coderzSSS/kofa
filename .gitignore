@@ -43,3 +43,6 @@ bin/
 /docs/
 /.idea/
 /.kotlin/
+
+### generated files ###
+**/*-generated.*
