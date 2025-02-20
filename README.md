@@ -10,5 +10,15 @@ KOFA believe an application should break into at least 3 main modules
 - **Platform** - runtime library that provides business neutral features such as config parsing, component discovery, lifecycle management, error handing, memory & thread management,
   event encoding/decoding & dispatching, replay & back-testing, latency optimization etc.
 
+# Usage & Example
+goto `examples` module to explore the usage, take carnival for example, in order to react on Banana/Apple events, it just takes 3 steps at compile time
+1. write the domain message definition (in xml or kotlin dsl)
+2. write the event handles
+3. segregate the handles into components which can be deployed individually at runtime.
+
+at runtime, you need a configuration file to bring up the application.
+simply run `./gradlew examples:carnival:run --args='-c application-carnival.conf'`
+
+
 # Inspiration & Tutorial
 here is a chinese feishu doc [领略kotlin之美，手把手带你搭建一个牛逼轰轰的业务框架](https://pv2sgxx0xup.feishu.cn/docx/LqLgdaNoeoNkhexMMjkcgJX1n4g?from=from_copylink) use to explain the idea
