@@ -1,7 +1,9 @@
 package io.kofa.platform.core.internal.config
 import com.typesafe.config.ConfigObject
+import com.typesafe.config.ConfigValue
 import io.github.config4k.ClassContainer
 import io.github.config4k.TypeReference
+import io.github.config4k.extract
 import io.github.config4k.readers.SelectReader
 import io.kofa.platform.api.config.Config
 import java.math.BigInteger
@@ -34,6 +36,15 @@ internal class TypeSafeConfig(private val delegate: com.typesafe.config.Config) 
                         put(it.key, TypeSafeConfig(v.toConfig().resolveWith(delegate)))
                     }
                 }
+            }
+        }
+    }
+
+    override fun <T: Any> getConfigMap(path: String, kClass: KClass<T>): Map<String, T> {
+        return buildMap {
+            val config = TypeSafeConfig(delegate.getConfig(path))
+            delegate.getObject(path).forEach {
+                put(it.key, config.extract(kClass, it.key))
             }
         }
     }

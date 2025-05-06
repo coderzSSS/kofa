@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="carnival" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="io.kofa.platform.launcher.LauncherMainKt" />
+    <module name="kofa.examples.carnival.main" />
+    <option name="PROGRAM_PARAMETERS" value="-c application-carnival.conf" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/examples/carnival" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

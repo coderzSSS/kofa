@@ -1,6 +1,7 @@
 package io.kofa.platform.codegen.writer.xml
 
 import io.kofa.platform.codegen.domain.*
+import io.kofa.platform.codegen.domain.type.ArrayFieldTypeWrapper
 import io.kofa.platform.codegen.domain.type.DomainFieldType
 import io.kofa.platform.codegen.domain.type.GeneratedFieldType
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.flattenFieldName
@@ -164,14 +165,15 @@ class SbeMessageXmlWriter {
     }
 
     private fun sortFieldType(type: DomainFieldType): Int {
-        return if (type.isPrimitive || type.isEnum || type.isBoolean || type.isFixed) {
-            0
-        } else if (isNeedFlatten(type)){
+        return if (isNeedFlatten(type)) {
             1
+        } else if (type.isPrimitive || type.isEnum || type.isBoolean || type.isFixed) {
+            0
         } else {
             2
         }
     }
+
 
     private fun getDomainTypeField(
         domain: ResolvedDomain,
@@ -191,8 +193,8 @@ class SbeMessageXmlWriter {
         prefix: String,
         field: ResolvedDomainField
     ): List<Element> {
-        return if (isNeedFlatten(field.type)) {
-            (field.type as GeneratedFieldType).fields.entries.sortedBy { entry -> sortFieldType(entry.value) }.flatMap { entry ->
+        return if (isNeedFlatten(field.type) && field.type is GeneratedFieldType) {
+            field.type.fields.entries.sortedBy { entry -> sortFieldType(entry.value) }.flatMap { entry ->
                 flattenGroupField(
                     domain,
                     document,
@@ -202,6 +204,15 @@ class SbeMessageXmlWriter {
                     getDomainTypeField(domain, field.type.typeName, entry.key)
                 )
             }
+        } else if (isNeedFlatten(field.type) && field.type is ArrayFieldTypeWrapper) {
+            flattenGroupField(
+                domain,
+                document,
+                initId,
+                groupIdCounter,
+                prefix,
+                field.copy(type = field.type.delegateType)
+            )
         } else {
             val id = initId + checkNotNull(field.id) { "missing field id for $field" }
             if (id > groupIdCounter.get()) {

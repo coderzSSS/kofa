@@ -5,6 +5,8 @@ import kotlin.reflect.KClass
 import kotlin.time.Duration
 
 interface Config {
+    fun <T: Any> getConfigMap(path: String, kClass: KClass<T>): Map<String, T>
+
     fun getConfigMap(path: String): Map<String, Config>
 
     fun getConfig(path: String): Config

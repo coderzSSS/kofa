@@ -3,6 +3,7 @@ package io.kofa.platform.codegen.writer.kotlin
 import com.squareup.kotlinpoet.*
 import io.kofa.platform.api.codec.DirectBufferCodec
 import io.kofa.platform.codegen.domain.ResolvedDomain
+import io.kofa.platform.codegen.domain.type.ArrayFieldTypeWrapper
 import io.kofa.platform.codegen.domain.type.DomainFieldType
 import io.kofa.platform.codegen.domain.type.GeneratedFieldType
 import io.kofa.platform.codegen.domain.type.JavaBuiltinType
@@ -137,9 +138,8 @@ class DomainMessageCodecWriter {
                     encoderPropertyName,
                     messageHeaderPropertyName
                 )
-
+            val localEncoderVars = mutableSetOf<String>()
             message.fields.forEach { field ->
-                val localEncoderVars = mutableSetOf<String>()
                 builder.add(
                     buildEncodeFieldCodeBlock(
                         encoderPropertyName,
@@ -175,16 +175,23 @@ class DomainMessageCodecWriter {
         encoderFieldName: String,
         fieldType: DomainFieldType,
         domain: ResolvedDomain,
-        localEncoderVars: MutableSet<String>
+        localEncoderVars: MutableSet<String>,
+        insideArray: Boolean = false
     ): CodeBlock {
         val builder = CodeBlock.builder()
         if (isFieldValueNullable) {
-            builder.beginControlFlow("%L?.%L?.let", valueName, valueFieldName)
+            if (insideArray) {
+                builder.beginControlFlow("%L.%L?.let", valueName, valueFieldName)
+            } else {
+                builder.beginControlFlow("%L?.%L?.let", valueName, valueFieldName)
+            }
         }
 
         if (fieldType.isPrimitive || fieldType.isEnum || fieldType.isBoolean || fieldType == JavaBuiltinType.STRING) {
             var valueStatement = if (isFieldValueNullable) {
                 "it"
+            } else if (insideArray) {
+                "%3L"
             } else {
                 "%3L.%4L"
             }
@@ -197,6 +204,13 @@ class DomainMessageCodecWriter {
 
             if (isFieldValueNullable) {
                 builder.addStatement("%L.%L($valueStatement)", typeEncoderName, encoderFieldName)
+            } else if (insideArray) {
+                builder.addStatement(
+                    "%1L.%2L($valueStatement)",
+                    typeEncoderName,
+                    encoderFieldName,
+                    valueName
+                )
             } else {
                 builder.addStatement(
                     "%1L.%2L($valueStatement)",
@@ -206,45 +220,88 @@ class DomainMessageCodecWriter {
                     valueFieldName
                 )
             }
-        } else if (fieldType is GeneratedFieldType) {
+        } else if (fieldType is ArrayFieldTypeWrapper || fieldType is GeneratedFieldType) {
             val needFlatten = isNeedFlatten(fieldType)
             val fieldTypeName = KotlinGeneratorUtils.resolveTypeName(domain, fieldType, true)
 
-            fieldType.fields.forEach { entry ->
-                val fieldTypeEncoderName =
-                    if (needFlatten) {
-                        val name = "${valueFieldName.deCap()}${fieldType.typeName.cap()}Encoder";
-                        if (!localEncoderVars.contains(name)) {
-                            builder.addStatement("var $name = $typeEncoderName.${valueFieldName}Count(1)")
-                            localEncoderVars.add(name)
-                        } else {
-                            builder.addStatement("$name = $typeEncoderName.${valueFieldName}Count(1)")
-                        }
-                        name
-                    } else {
-                        "${typeEncoderName}.${valueFieldName}"
-                    }
 
-                val typeFieldName = if (needFlatten) {
-                    flattenFieldName(valueFieldName, fieldType.typeName, entry.key)
+            val fieldTypeEncoderName =
+                if (needFlatten) {
+                    "${valueFieldName.deCap()}${fieldType.typeName.cap()}Encoder";
                 } else {
-                    entry.key
+                    "${typeEncoderName}.${valueFieldName}"
                 }
+
+            if (needFlatten && !insideArray) {
+                val countVar = if (localEncoderVars.contains("count")) {
+                    "count"
+                } else {
+                    localEncoderVars.add("count")
+                    "var count"
+                }
+                if (fieldType.isArray) {
+                    builder.addStatement("%L = $valueName.${valueFieldName}.size", countVar)
+                } else {
+                    builder.addStatement("%L = 1", countVar)
+                }
+
+                if (!localEncoderVars.contains(fieldTypeEncoderName)) {
+                    builder.addStatement("var $fieldTypeEncoderName = $typeEncoderName.${valueFieldName}Count(count)")
+                    localEncoderVars.add(fieldTypeEncoderName)
+                } else {
+                    builder.addStatement("$fieldTypeEncoderName = $typeEncoderName.${valueFieldName}Count(count)")
+                }
+            }
+
+            if (fieldType is ArrayFieldTypeWrapper) {
+                builder.beginControlFlow("for (value in $valueName.$valueFieldName)")
 
                 builder.add(
                     buildEncodeFieldCodeBlock(
                         fieldTypeEncoderName,
-                        "$valueName.$valueFieldName",
-                        entry.key,
-                        fieldTypeName.isNullable,
-                        typeFieldName,
-                        entry.value,
+                        "value",
+                        valueFieldName,
+                        false,
+                        flattenFieldName(valueFieldName, valueFieldName),
+                        fieldType.delegateType,
                         domain,
                         localEncoderVars,
+                        true
                     )
                 )
-            }
 
+                if (needFlatten) {
+                    builder.addStatement("$fieldTypeEncoderName = $fieldTypeEncoderName.next()")
+                }
+                builder.endControlFlow()
+            } else if (fieldType is GeneratedFieldType) {
+                fieldType.fields.forEach { entry ->
+                    val typeFieldName = if (needFlatten) {
+                        flattenFieldName(valueFieldName, fieldType.typeName, entry.key)
+                    } else {
+                        entry.key
+                    }
+
+                    val valueNameUpdated = if (!insideArray) {
+                        "$valueName.$valueFieldName"
+                    } else {
+                        valueName
+                    }
+
+                    builder.add(
+                        buildEncodeFieldCodeBlock(
+                            fieldTypeEncoderName,
+                            valueNameUpdated,
+                            entry.key,
+                            fieldTypeName.isNullable,
+                            typeFieldName,
+                            entry.value,
+                            domain,
+                            localEncoderVars,
+                        )
+                    )
+                }
+            }
         } else {
             throw IllegalStateException("cannot handle field $valueFieldName, type $fieldType")
         }
@@ -335,55 +392,90 @@ class DomainMessageCodecWriter {
                 typeDecoderName,
                 decoderFieldName,
             )
-        } else if (fieldType is GeneratedFieldType) {
+        } else if (fieldType.isArray || fieldType is GeneratedFieldType) {
             val needFlatten = isNeedFlatten(fieldType)
-
-            fieldType.fields.forEach { entry ->
-                val fieldTypeDecoderName =
-                    if (needFlatten) {
-                        val name = "${valueFieldName.deCap()}${fieldType.typeName.cap()}Decoder";
-                        if (!localDecoderVars.contains(name)) {
-                            builder.addStatement("val $name = $typeDecoderName.${valueFieldName}()")
-                            localDecoderVars.add(name)
-                        }
-                        name
-                    } else {
-                        "${typeDecoderName}.${valueFieldName}"
+            val fieldTypeDecoderName =
+                if (needFlatten) {
+                    val name = "${valueFieldName.deCap()}${fieldType.typeName.cap()}Decoder";
+                    if (!localDecoderVars.contains(name)) {
+                        builder.addStatement("var $name = $typeDecoderName.${valueFieldName}()")
+                        localDecoderVars.add(name)
                     }
-
-                val typeFieldName = if (needFlatten) {
-                    flattenFieldName(valueFieldName, fieldType.typeName, entry.key)
+                    name
                 } else {
-                    entry.key
+                    "${typeDecoderName}.${valueFieldName}"
                 }
 
+            var valueVarNameUpdated = valueVarName
+            if (needFlatten) {
+                if (fieldType is ArrayFieldTypeWrapper) {
+                    valueVarNameUpdated = "${valueVarName}Item"
+                    builder.addStatement("val %N = mutableListOf<%T>()", valueVarName, domain.generatedClassName(fieldType.delegateType, false))
+                    builder.beginControlFlow("while(%N.hasNext())", fieldTypeDecoderName)
+                } else {
+                    builder.addStatement("lateinit var %N: %T ", valueVarName, domain.generatedClassName(fieldType))
+                    builder.beginControlFlow("if(%N.hasNext())", fieldTypeDecoderName)
+                }
+                builder.addStatement("%1N = %1N.next()", fieldTypeDecoderName)
+            }
+
+            if (fieldType is GeneratedFieldType) {
+                fieldType.fields.forEach { entry ->
+                    val typeFieldName = if (needFlatten) {
+                        flattenFieldName(valueFieldName, fieldType.typeName, entry.key)
+                    } else {
+                        entry.key
+                    }
+
+                    builder.add(
+                        buildDecodeFieldCodeBlock(
+                            fieldTypeDecoderName,
+                            typeFieldName.decodedValueVar(),
+                            entry.key,
+                            typeFieldName,
+                            entry.value,
+                            localDecoderVars,
+                            domain
+                        )
+                    )
+                }
+            } else if (fieldType is ArrayFieldTypeWrapper) {
                 builder.add(
                     buildDecodeFieldCodeBlock(
                         fieldTypeDecoderName,
-                        typeFieldName.decodedValueVar(),
-                        entry.key,
-                        typeFieldName,
-                        entry.value,
+                        valueVarNameUpdated,
+                        valueFieldName,
+                        flattenFieldName(valueFieldName, valueFieldName),
+                        fieldType.delegateType,
                         localDecoderVars,
                         domain
                     )
                 )
             }
 
-            builder.add("val %N = %T(\n", valueVarName, domain.generatedClassName(fieldType))
-                .indent()
+            if (fieldType is GeneratedFieldType) {
+                builder.add(" %N = %T(\n", valueVarNameUpdated, domain.generatedClassName(fieldType))
+                    .indent()
 
-            fieldType.fields.forEach { entry ->
-                val typeFieldName = if (needFlatten) {
-                    flattenFieldName(valueFieldName, fieldType.typeName, entry.key)
-                } else {
-                    entry.key
+                fieldType.fields.forEach { entry ->
+                    val typeFieldName = if (needFlatten) {
+                        flattenFieldName(valueFieldName, fieldType.typeName, entry.key)
+                    } else {
+                        entry.key
+                    }
+
+                    builder.addStatement("%N = %N,", entry.key, typeFieldName.decodedValueVar())
                 }
 
-                builder.addStatement("%N = %N,", entry.key, typeFieldName.decodedValueVar())
+                builder.unindent().add(")\n")
             }
 
-            builder.unindent().add(")\n")
+            if (needFlatten) {
+                if (fieldType.isArray) {
+                    builder.addStatement("%N.add(%N)", valueVarName, valueVarNameUpdated)
+                }
+                builder.endControlFlow()
+            }
 
         } else {
             throw IllegalStateException("cannot handle field $valueFieldName, type $fieldType")

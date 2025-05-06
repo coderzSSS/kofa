@@ -33,8 +33,11 @@
             </implements>
             <fields>
                 <field name="name" type="string"/>
+                <field name="strArr" type="string[]"/>
                 <field name="value" type="TypeA"/>
+                <field name="valueArr" type="TypeA[]"/>
                 <field name="int1" type="int"/>
+                <field name="intArr" type="int[]"/>
                 <field name="value2" type="TypeA"/>
                 <field name="bool1" type="bool"/>
             </fields>

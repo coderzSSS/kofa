@@ -13,6 +13,7 @@ plugins {
 rootProject.name = "kofa"
 include("examples")
 include("examples:carnival")
+include("examples:mds")
 
 include("platform")
 include("platform:platform-api")

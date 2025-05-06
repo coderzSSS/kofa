@@ -23,17 +23,15 @@ object KotlinGeneratorUtils {
 
     fun ResolvedDomain.simpleClassName(name: String) = ClassName(pkgName, name.cap())
 
-    fun ResolvedDomain.generatedClassName(fieldType: DomainFieldType): ClassName {
+    fun ResolvedDomain.generatedClassName(fieldType: DomainFieldType, mutable: Boolean = true): ClassName {
         return when (fieldType) {
             is GeneratedFieldType -> {
-                return if (!fieldType.isMessage) {
-                    ClassName(pkgName, resolveTypeClassName(fieldType.typeName, false, true))
-                } else {
-                    ClassName(pkgName, resolveTypeClassName(fieldType.typeName, true, true))
-                }
+                return ClassName(pkgName, resolveTypeClassName(fieldType.typeName, fieldType.isMessage, mutable))
             }
 
             is GeneratedEnumFieldType -> simpleClassName(fieldType.typeName)
+
+            is JavaBuiltinType -> fieldType.kClass.asClassName()
 
             else -> throw IllegalStateException("Unsupported field type $fieldType")
         }
@@ -49,13 +47,14 @@ object KotlinGeneratorUtils {
     fun getSealedDomainMessageName(domainName: String) = domainName.cap() + "Message"
 
     fun isNeedFlatten(fieldType: DomainFieldType): Boolean {
-        return fieldType is GeneratedFieldType && !fieldType.fields.all { e -> e.value.isPrimitive }
+        return fieldType is ArrayFieldTypeWrapper || (fieldType is GeneratedFieldType && !fieldType.fields.all { e -> e.value.isPrimitive })
     }
 
     fun resolveTypeName(
         domain: ResolvedDomain,
         fieldType: DomainFieldType,
-        mutable: Boolean
+        mutable: Boolean,
+        nullable: Boolean = fieldType.isNullable
     ): TypeName {
         val listClassName = if (mutable) {
             MUTABLE_LIST
@@ -80,16 +79,17 @@ object KotlinGeneratorUtils {
             is ArrayFieldTypeWrapper -> listClassName.parameterizedBy(
                 resolveTypeName(
                     domain,
-                    fieldType.delegateType,
-                    mutable
+                    fieldType = fieldType.delegateType,
+                    mutable = false,
+                    nullable = false
                 )
             )
         }
 
-        return if (!fieldType.isPrimitive && typeName.isNullable != fieldType.isNullable) {
-            typeName.copy(nullable = fieldType.isNullable)
+        return if (fieldType.isArray || fieldType.isPrimitive || fieldType.isEnum || fieldType.isBoolean) {
+            typeName.copy(nullable = false)
         } else {
-            typeName
+            typeName.copy(nullable = nullable)
         }
     }
 

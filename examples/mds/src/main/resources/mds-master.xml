@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<domain xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        name="MarketData"
+        package="io.kofa.example.mds.generated"
+        xsi:noNamespaceSchemaLocation="../../../../../platform/platform-codegen/src/main/resources/xsd/domain-master.xsd">
+    <messages>
+        <message name="PriceTick">
+            <fields>
+                <field name="symbol" type="string"/>
+                <field name="price" type="double"/>
+            </fields>
+        </message>
+
+        <message name="PriceTicks">
+            <fields>
+                <field name="tickers" type="PriceTick[]"/>
+                <field name="ticker" type="PriceTick"/>
+                <field name="strings" type="string[]"/>
+            </fields>
+        </message>
+    </messages>
+</domain>
