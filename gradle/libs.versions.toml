@@ -12,12 +12,14 @@ kotest = "5.9.1"
 kotlin = "2.1.0"
 kotlinxCoroutine = "1.9.0"
 ksp = "2.1.0-1.0.29"
+kotlinDataFrame = "0.15.0"
 
 [plugins]
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 dokka = "org.jetbrains.dokka:1.9.20"
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kotlin-dataframe = { id = "org.jetbrains.kotlinx.dataframe", version.ref = "kotlinDataFrame"}
 node = "com.github.node-gradle.node:7.0.2"
 versionCatalogUpdate = "nl.littlerobots.version-catalog-update:0.8.4"
 versions = "com.github.ben-manes.versions:0.51.0"
@@ -49,6 +51,8 @@ kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version 
 kotlinx-coroutine = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm", version.ref = "kotlinxCoroutine" }
 kotlinx-coroutineTest = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutine" }
 kotlinx-serialization-json = "org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1"
+kotlin-dataframe = { module = "org.jetbrains.kotlinx:dataframe", version.ref = "kotlinDataFrame"}
+
 # @pin
 logback = "ch.qos.logback:logback-classic:1.4.12"
 mockk = "io.mockk:mockk:1.13.12"

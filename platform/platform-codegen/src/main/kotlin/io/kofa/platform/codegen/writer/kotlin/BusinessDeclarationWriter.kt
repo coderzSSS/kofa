@@ -10,6 +10,7 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import io.kofa.platform.api.dsl.BusinessDeclaration
 import io.kofa.platform.api.util.EventContext
+import io.kofa.platform.api.util.EventDispatcher
 import io.kofa.platform.codegen.domain.ResolvedDomain
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.businessDeclarationClassName
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.eventClassName
@@ -112,10 +113,13 @@ class BusinessDeclarationWriter(private val resolver: Resolver) {
 
             val injectMember = MemberName("io.kofa.platform.api.dsl", "inject")
 
+            val isEventDispatcher = EventDispatcher::class.asKsType(resolver)?.isAssignableFrom(config.handlerClass.asStarProjectedType()) == true
+
             if (isDomainMessageHandler) {
                 builder.addStatement("withEventDispatcher(%M<%T>())", injectMember, domain.messageHandlerClassName())
+            } else if (isEventDispatcher) {
+                builder.addStatement("withEventDispatcher(%M<%T>())", injectMember, config.handlerClass.toClassName())
             } else {
-
                 val domainMessages = domain.messages.flatMap { message ->
                     listOf(
                         domain.messageClassName(message.name),

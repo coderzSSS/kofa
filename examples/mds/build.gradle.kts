@@ -15,6 +15,7 @@ application {
 
 dependencies {
     implementation(rootProject.libs.kotlinx.datetime)
+    implementation(rootProject.libs.kotlin.dataframe)
 
     implementation(rootProject.libs.agrona)
     implementation(rootProject.libs.sbe)

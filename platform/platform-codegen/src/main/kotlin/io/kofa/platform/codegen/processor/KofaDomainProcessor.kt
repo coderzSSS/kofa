@@ -11,6 +11,7 @@ import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.ksp.writeTo
 import io.kofa.platform.api.annotation.DomainModule
+import io.kofa.platform.api.inject.ComponentModuleDeclaration
 import io.kofa.platform.codegen.domain.ResolvedDomain
 import io.kofa.platform.codegen.generator.DefaultDomainGenerator
 import io.kofa.platform.codegen.generator.DomainGeneratorConfig
@@ -25,6 +26,8 @@ class KofaDomainProcessor(private val environment: SymbolProcessorEnvironment) :
     private val logger = environment.logger
     private val codeGenerator = environment.codeGenerator
     private val resolvedDomain = generateDomain()
+
+    private val componentConfigList = mutableSetOf<BusinessDeclarationWriter.ComponentTypeConfig>()
 
     @OptIn(KspExperimental::class)
     override fun process(resolver: Resolver): List<KSAnnotated> {
@@ -47,13 +50,17 @@ class KofaDomainProcessor(private val environment: SymbolProcessorEnvironment) :
 
         val validComponentConfigs = componentConfigs.values.filter { config -> config.handlerClass.validate() }
 
-        if (validComponentConfigs.isNotEmpty()) {
-            val fileSpec = BusinessDeclarationWriter(resolver).generate(resolvedDomain, validComponentConfigs)
+        componentConfigList.addAll(validComponentConfigs)
+
+        val result = symbols.filterNot { it.validate() }.toList() + componentConfigs.filterNot { e -> e.value.handlerClass.validate() }.map { it.key }
+
+        if (result.isEmpty() && componentConfigs.isNotEmpty()) {
+            val fileSpec = BusinessDeclarationWriter(resolver).generate(resolvedDomain, componentConfigList.toList())
             fileSpec.writeTo(codeGenerator, Dependencies.ALL_FILES)
             logger.info("file ${fileSpec.relativePath} generated")
         }
 
-        return symbols.filterNot { it.validate() }.toList() + componentConfigs.filterNot { e -> e.value.handlerClass.validate() }.map { it.key }
+        return result
     }
 
     private fun generateDomain(): ResolvedDomain {
