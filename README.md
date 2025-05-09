@@ -10,6 +10,9 @@ KOFA believe an application should break into at least 3 main modules
 - **Platform** - runtime library that provides business neutral features such as config parsing, component discovery, lifecycle management, error handing, memory & thread management,
   event encoding/decoding & dispatching, replay & back-testing, latency optimization etc.
 
+# Project Structure
+![img.png](img.png)
+
 # Usage & Example
 goto `examples` module to explore the usage, take carnival for example, in order to react on Banana/Apple events, it just takes 3 steps at compile time
 1. write the domain message definition (in xml or kotlin dsl)
