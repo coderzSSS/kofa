@@ -9,6 +9,7 @@ import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.eventClassNam
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.eventHandlerName
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.messageConstantsClassName
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.messageHandlerClassName
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.qualifiedName
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.star
 import kotlin.reflect.KClass
 
@@ -25,6 +26,7 @@ class DomainMessageHandlerWriter {
                 AbstractMessageBusService::class.asTypeName()
                     .parameterizedBy(sealedMessageTypeName)
             )
+            .addSuperclassConstructorParameter("%S", domain.qualifiedName())
             .addFunction(
                 FunSpec.builder("isInterested")
                     .addModifiers(KModifier.OVERRIDE)

@@ -9,6 +9,7 @@ import io.kofa.platform.codegen.domain.ResolvedDomain
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.domainDeclarationClassName
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.messageCodecClassName
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.messageConstantsClassName
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.qualifiedName
 
 class DomainDeclarationWriter {
     fun generate(domain: ResolvedDomain): FileSpec {
@@ -44,15 +45,17 @@ class DomainDeclarationWriter {
         builder.addStatement("pkg = %S", domain.pkgName)
 
         val bindMember = MemberName("org.koin.dsl", "bind")
+        val namedMember = MemberName("org.koin.core.qualifier", "named")
+        val qualifier = domain.qualifiedName()
 
         builder.beginControlFlow("val domainModule = %M", moduleMember)
-        builder.beginControlFlow("factory")
+        builder.beginControlFlow("factory(%M(%S))", namedMember, qualifier)
             .addStatement("%T()", domain.messageCodecClassName())
             //.endControlFlow()
             .unindent()
             .add("}.%M(%T::class)\n", bindMember, DirectBufferCodec::class)
 
-        builder.beginControlFlow("single")
+        builder.beginControlFlow("single(%M(%S))", namedMember, qualifier)
             .addStatement("%T", domain.messageConstantsClassName())
             //.endControlFlow()
             .unindent()

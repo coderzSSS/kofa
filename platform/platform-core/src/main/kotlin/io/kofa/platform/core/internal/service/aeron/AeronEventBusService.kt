@@ -2,6 +2,7 @@ package io.kofa.platform.core.internal.service.aeron
 
 import io.aeron.FragmentAssembler
 import io.aeron.Subscription
+import io.aeron.archive.codecs.MessageHeaderDecoder
 import io.aeron.logbuffer.FragmentHandler
 import io.aeron.logbuffer.Header
 import io.kofa.platform.api.codec.DirectBufferCodec
@@ -11,9 +12,10 @@ import kotlinx.coroutines.runBlocking
 import org.agrona.DirectBuffer
 
 internal class AeronEventBusService(
-    private val codec: DirectBufferCodec,
     name: String = "AeronEventBus"
 ) : FragmentHandler, AbstractEventBusService(name) {
+    val messageHeaderDecoder: MessageHeaderDecoder = MessageHeaderDecoder()
+
     private val assembler = FragmentAssembler(this)
     private lateinit var subscription: Subscription
 
@@ -25,16 +27,24 @@ internal class AeronEventBusService(
         subscription.close()
     }
 
+    private fun decode(codec: DirectBufferCodec) {
+
+    }
     override fun onFragment(
         buffer: DirectBuffer,
         offset: Int,
         length: Int,
         header: Header
     ) {
-        val event = codec.decodeFromDirectBuffer<Any>(buffer, offset)
+        val eventProvider = { codec: DirectBufferCodec ->
+            codec.decodeFromDirectBuffer<Any>(buffer, offset)
+        }
+
+        messageHeaderDecoder.wrap(buffer, offset)
+        val templateId = messageHeaderDecoder.templateId()
 
         runBlocking {
-            dispatch(event) {}
+            dispatch(templateId, eventProvider) {}
         }
     }
 

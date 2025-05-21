@@ -1,13 +1,16 @@
 package io.kofa.platform.core.internal.service.common
 
+import io.kofa.platform.api.codec.DirectBufferCodec
 import io.kofa.platform.api.util.EventContext
 import io.kofa.platform.api.util.EventDispatcher
+import io.kofa.platform.api.util.LazyEventDispatcher
 import io.kofa.platform.core.internal.component.PlatformComponent
 import io.kofa.platform.core.internal.service.EventBusService
 import io.kofa.platform.core.internal.thread.eventloop.IterableTask
 
-internal abstract class AbstractEventBusService (name: String): EventBusService, PlatformComponent, IterableTask(name){
+internal abstract class AbstractEventBusService(name: String) : EventBusService, PlatformComponent, IterableTask(name) {
     private val dispatchers = mutableListOf<EventDispatcher>()
+    private val lazyDispatchers = mutableListOf<LazyEventDispatcher>()
     private val eventContext = MutableEventContext(0L)
 
     data class MutableEventContext(private var eventTimestampInMillis: Long) : EventContext {
@@ -32,6 +35,10 @@ internal abstract class AbstractEventBusService (name: String): EventBusService,
 
     override fun addDispatcher(dispatcher: EventDispatcher) {
         this.dispatchers.add(dispatcher)
+
+        if (dispatcher is LazyEventDispatcher) {
+            this.lazyDispatchers.add(dispatcher)
+        }
     }
 
     override suspend fun start() {
@@ -41,11 +48,34 @@ internal abstract class AbstractEventBusService (name: String): EventBusService,
     }
 
     protected suspend fun dispatch(event: Any, action: MutableEventContext.() -> Unit) {
+        if (dispatchers.isEmpty()) {
+            return
+        }
+
         eventContext.action()
 
         dispatchers.forEach {
             if (it.isInterested(event::class)) {
                 it.dispatch(eventContext, event)
+            }
+        }
+
+        eventContext.reset()
+    }
+
+    protected suspend fun dispatch(
+        eventType: Int,
+        eventProvider: (DirectBufferCodec) -> Any,
+        action: MutableEventContext.() -> Unit
+    ) {
+        if (lazyDispatchers.isEmpty()) {
+            return
+        }
+        eventContext.action()
+
+        lazyDispatchers.forEach {
+            if (it.isInterested(eventType)) {
+                it.dispatch(eventContext, eventProvider)
             }
         }
 

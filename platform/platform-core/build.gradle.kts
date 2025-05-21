@@ -1,5 +1,11 @@
 plugins {
+    alias(libs.plugins.ksp)
     kotlin("kapt")
+}
+
+ksp {
+    arg("kofa.rootDir", project.projectDir.absolutePath)
+    arg("kofa.domain.master", "src/main/resources/platform-master.xml")
 }
 
 dependencies {
@@ -21,4 +27,5 @@ dependencies {
     compileOnly(rootProject.libs.autoServiceAnnotation)
     annotationProcessor(rootProject.libs.autoService)
     kapt(rootProject.libs.autoService)
+    ksp(project(":platform:platform-codegen"))
 }

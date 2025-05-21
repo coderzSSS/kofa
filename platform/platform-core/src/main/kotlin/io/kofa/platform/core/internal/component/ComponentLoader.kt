@@ -8,6 +8,8 @@ import io.kofa.platform.core.internal.component.config.ComponentConfig
 import io.kofa.platform.core.internal.component.config.source
 import io.kofa.platform.core.internal.component.impl.DefaultComponentFactory
 import io.kofa.platform.core.internal.component.impl.ScopedComponent
+import io.kofa.platform.core.internal.launcher.PlatformConfig
+import io.kofa.platform.core.internal.session.SessionManager
 import org.koin.core.Koin
 import java.util.*
 
@@ -57,6 +59,10 @@ internal class ComponentLoader(
         requireNotNull(componentById[componentId]) { "no component found for $componentId" }
 
     private fun getSystemComponents(): List<PlatformComponent> {
-        return listOf()
+        val config = koin.get<PlatformConfig>()
+
+        return listOf(
+            SessionManager(config, koin)
+        )
     }
 }

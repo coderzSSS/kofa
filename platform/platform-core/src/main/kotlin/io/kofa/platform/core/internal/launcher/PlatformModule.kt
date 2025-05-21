@@ -9,9 +9,19 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
+const val DOMAIN_QUALIFIER: String = "domain"
+
 internal fun platformModule(config: PlatformConfig) = module {
-    single(named("domain")) {
+    single(named(DOMAIN_QUALIFIER)) {
         config.domain
+    }
+
+    single {
+        config.config
+    }
+
+    single {
+        config
     }
 
     includes(

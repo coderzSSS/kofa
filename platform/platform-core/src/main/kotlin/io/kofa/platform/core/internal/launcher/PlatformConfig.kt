@@ -1,5 +1,6 @@
 package io.kofa.platform.core.internal.launcher
 
+import io.kofa.platform.api.config.Config
 import io.kofa.platform.core.internal.component.config.ComponentConfig
 import io.kofa.platform.core.internal.service.config.EventStreamConfig
 import io.kofa.platform.core.internal.thread.eventloop.config.EventLoopConfig
@@ -10,5 +11,6 @@ internal data class PlatformConfig(
     val timezone: TimeZone = TimeZone.currentSystemDefault(),
     val eventLoop: EventLoopConfig,
     val eventStream: EventStreamConfig,
-    val components: List<ComponentConfig>
+    val components: List<ComponentConfig>,
+    val config: Config
 )

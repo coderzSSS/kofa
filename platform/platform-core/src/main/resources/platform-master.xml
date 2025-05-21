@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<domain xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        name="Platform"
+        package="io.kofa.platform.message"
+        xsi:noNamespaceSchemaLocation="../../../../../platform/platform-codegen/src/main/resources/xsd/domain-master.xsd">
+    <messages>
+        <message name="SessionStarted">
+            <fields>
+                <field name="sessionId" type="string"/>
+            </fields>
+        </message>
+
+        <message name="SessionStopped">
+            <fields>
+                <field name="sessionId" type="string"/>
+            </fields>
+        </message>
+    </messages>
+</domain>

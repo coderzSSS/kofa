@@ -7,6 +7,10 @@ import io.kofa.platform.codegen.domain.type.*
 import kotlin.reflect.KClass
 
 object KotlinGeneratorUtils {
+    fun ResolvedDomain.qualifiedName(): String {
+        return "${pkgName}.${domainName}"
+    }
+
     fun ResolvedDomain.eventClassName(name: String) = ClassName(pkgName, resolveTypeClassName(name, true, false))
 
     fun ResolvedDomain.messageClassName(name: String) = ClassName(pkgName, resolveTypeClassName(name, true, true))

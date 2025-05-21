@@ -77,7 +77,8 @@ object PlatformLauncher {
             timezone = timezone?.let { tz ->  TimeZone.of(tz)} ?: TimeZone.currentSystemDefault(),
             eventLoop = eventLoopConfig,
             eventStream = eventStreamConfig,
-            components = componentConfigByType.values.toList()
+            components = componentConfigByType.values.toList(),
+            config
         )
     }
 

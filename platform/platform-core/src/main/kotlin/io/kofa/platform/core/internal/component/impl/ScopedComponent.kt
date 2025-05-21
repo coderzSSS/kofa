@@ -8,6 +8,7 @@ import io.kofa.platform.core.internal.component.Component
 import io.kofa.platform.core.internal.component.config.ComponentConfig
 import io.kofa.platform.core.internal.component.config.logger
 import io.kofa.platform.core.internal.component.config.source
+import io.kofa.platform.core.internal.launcher.DOMAIN_QUALIFIER
 import org.koin.core.Koin
 import org.koin.core.component.KoinScopeComponent
 import org.koin.core.qualifier.named
@@ -85,4 +86,5 @@ internal open class ScopedComponent(
         }
     }
 
+    protected fun getDomain() = get(String::class, DOMAIN_QUALIFIER)
 }
