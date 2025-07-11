@@ -1,7 +1,10 @@
 package io.kofa.platform.codegen.writer.kotlin
 
 import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import io.kofa.platform.api.codec.CodecUtils
 import io.kofa.platform.api.codec.DirectBufferCodec
+import io.kofa.platform.api.message.EventHeader
 import io.kofa.platform.codegen.domain.ResolvedDomain
 import io.kofa.platform.codegen.domain.type.ArrayFieldTypeWrapper
 import io.kofa.platform.codegen.domain.type.DomainFieldType
@@ -40,6 +43,7 @@ class DomainMessageCodecWriter {
             FunSpec.builder("encodeToDirectBuffer")
                 .addModifiers(KModifier.OVERRIDE)
                 .addTypeVariable(TypeVariableName("T"))
+                .addParameter("header", EventHeader::class)
                 .addParameter(VALUE_NAME, typeVariable)
                 .addParameter("byteBuffer", MutableDirectBuffer::class)
                 .addParameter("offset", Int::class)
@@ -58,7 +62,7 @@ class DomainMessageCodecWriter {
                 .addParameter("byteBuffer", DirectBuffer::class)
                 .addParameter("offset", Int::class)
                 .addCode(buildDecodeCodeBlock(domain))
-                .returns(typeVariable)
+                .returns(Pair::class.asClassName().parameterizedBy(listOf(EventHeader::class.asTypeName(), typeVariable)))
                 .build()
         )
         if (domain.messages.any { type -> type.fields.any { f -> f.type.isBoolean } } || domain.types.any { type -> type.fields.any { f -> f.type.isBoolean } }) {
@@ -138,6 +142,11 @@ class DomainMessageCodecWriter {
                     encoderPropertyName,
                     messageHeaderPropertyName
                 )
+            builder.addStatement("%N.eventTimestamp(header.eventTimeStampInMillis)", messageHeaderPropertyName)
+                .addStatement("%N.sourceSequence(header.sourceSequence)", messageHeaderPropertyName)
+                .addStatement("%N.globalSequence(header.globalSequence)", messageHeaderPropertyName)
+                .addStatement("%N.source(%T.encodeSourceToInt(header.source))", messageHeaderPropertyName, CodecUtils::class)
+
             val localEncoderVars = mutableSetOf<String>()
             message.fields.forEach { field ->
                 builder.add(
@@ -323,7 +332,17 @@ class DomainMessageCodecWriter {
             .addStatement("val actingVersion = %N.version()", messageHeaderDecoderName)
             .addStatement("val bufferOffset = %N.encodedLength() + offset", messageHeaderDecoderName)
 
-        builder.beginControlFlow("when (templateId)")
+        builder.add("val header = %T(\n", EventHeader::class)
+            .indent()
+            .add("eventType = templateId,\n")
+            .add("source = %T.decodeIntToSource(%N.source()),\n", CodecUtils::class, messageHeaderDecoderName)
+            .add("sourceSequence = %N.sourceSequence(),\n", messageHeaderDecoderName)
+            .add("globalSequence = %N.globalSequence(),\n", messageHeaderDecoderName)
+            .add("eventTimeStampInMillis = %N.eventTimestamp()\n", messageHeaderDecoderName)
+            .unindent()
+            .add(")\n")
+
+        builder.beginControlFlow("val value = when (templateId)")
         domain.messages.forEach { message ->
             builder.beginControlFlow("%T.TEMPLATE_ID -> ", domain.decoderClassName(message.name))
             val decoderName = decoderPropertyName(message.name)
@@ -345,7 +364,7 @@ class DomainMessageCodecWriter {
                 )
             }
 
-            builder.add("return %T(\n", domain.messageClassName(message.name))
+            builder.add("%T(\n", domain.messageClassName(message.name))
                 .indent()
 
             message.fields.forEach { field ->
@@ -361,6 +380,7 @@ class DomainMessageCodecWriter {
 
         // end when
         builder.endControlFlow()
+        builder.addStatement("return %T(header, value)", Pair::class)
         return builder.build()
     }
 

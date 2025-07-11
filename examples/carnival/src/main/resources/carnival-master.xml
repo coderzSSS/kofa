@@ -3,6 +3,7 @@
 <domain xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         name="carnival"
         package="io.kofa.example.carnival.v2"
+        import="platform-master.xml"
         xsi:noNamespaceSchemaLocation="../../../../../platform/platform-codegen/src/main/resources/xsd/domain-master.xsd">
     <messages>
         <message name="Banana">

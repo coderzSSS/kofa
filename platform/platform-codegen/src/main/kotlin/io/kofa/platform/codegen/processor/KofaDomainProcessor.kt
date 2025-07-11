@@ -10,8 +10,8 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.ksp.writeTo
+import io.github.classgraph.ClassGraph
 import io.kofa.platform.api.annotation.DomainModule
-import io.kofa.platform.api.inject.ComponentModuleDeclaration
 import io.kofa.platform.codegen.domain.ResolvedDomain
 import io.kofa.platform.codegen.generator.DefaultDomainGenerator
 import io.kofa.platform.codegen.generator.DomainGeneratorConfig
@@ -52,7 +52,8 @@ class KofaDomainProcessor(private val environment: SymbolProcessorEnvironment) :
 
         componentConfigList.addAll(validComponentConfigs)
 
-        val result = symbols.filterNot { it.validate() }.toList() + componentConfigs.filterNot { e -> e.value.handlerClass.validate() }.map { it.key }
+        val result = symbols.filterNot { it.validate() }
+            .toList() + componentConfigs.filterNot { e -> e.value.handlerClass.validate() }.map { it.key }
 
         if (result.isEmpty() && componentConfigs.isNotEmpty()) {
             val fileSpec = BusinessDeclarationWriter(resolver).generate(resolvedDomain, componentConfigList.toList())
@@ -70,8 +71,10 @@ class KofaDomainProcessor(private val environment: SymbolProcessorEnvironment) :
             checkNotNull(environment.getPath("kofa.domain.master")) { "missing domain master file" }
         val generatedDomainXmlFile = environment.getPath("kofa.domain.generated")
 
-        val xmlParser = XmlDomainParser()
+        val scanClassPath = environment.getClassPath()
 
+        logger.info("kofa scanning classpath: $scanClassPath")
+        val xmlParser = XmlDomainParser(scanClassPath)
         val domainXsd = environment.getPath("kofa.domain.xsd")?.let { xsd -> File(xmlParser.resolveUrl(xsd).file) }
 
         val sbeJavaOutputDir = environment.getPath("kofa.sbeJavaOutputDir", "build/generated/ksp/main/java")
@@ -83,7 +86,7 @@ class KofaDomainProcessor(private val environment: SymbolProcessorEnvironment) :
         )
 
 
-        val plainDomain = XmlDomainParser().parse(masterDomainXmlFile, domainXsd)
+        val plainDomain = XmlDomainParser(scanClassPath).parse(masterDomainXmlFile, domainXsd)
         val existingDomain = generatedDomainXmlFile?.let {
             xmlParser.tryResolveUrl(it)?.let { uRL ->
                 xmlParser.parse(uRL.file, domainXsd)
@@ -103,6 +106,21 @@ class KofaDomainProcessor(private val environment: SymbolProcessorEnvironment) :
 
         return if (rootDir == null) value else value?.let {
             if (Path(it).isAbsolute) it else Paths.get(rootDir, it).toString()
+        }
+    }
+
+    private fun SymbolProcessorEnvironment.getClassPath(): String {
+        val rootDir = options["kofa.rootDir"]
+        val classpath = options["kofa.classpath"]
+
+        return buildString {
+            append(".")
+            if (rootDir != null) {
+                append(File.pathSeparator).append(rootDir)
+            }
+            if (classpath != null) {
+                append(File.pathSeparator).append(classpath)
+            }
         }
     }
 }

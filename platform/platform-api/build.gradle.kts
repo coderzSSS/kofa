@@ -9,6 +9,7 @@ dependencies {
     api(rootProject.libs.kotlin.logging)
     api(rootProject.libs.agrona)
 
+    implementation(rootProject.libs.apache.commons.text)
     implementation(rootProject.libs.config4k)
 
     runtimeOnly(rootProject.libs.logback)

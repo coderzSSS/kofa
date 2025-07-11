@@ -8,9 +8,9 @@ import io.kofa.platform.codegen.xsd.generated.Type
 import java.io.File
 import java.io.InputStream
 
-class XmlDomainParser : AbstractXmlDomainParser() {
+class XmlDomainParser(classpath: String? = null) : AbstractXmlDomainParser(classpath) {
     fun parse(xmlPath: String, xsdFile: File? = null): PlainDomain {
-        return resolveUrl(xmlPath).openStream().use {
+        return resolveInputStream(xmlPath).use {
             parse(it, xsdFile)
         }
     }
@@ -56,8 +56,8 @@ class XmlDomainParser : AbstractXmlDomainParser() {
             return listOf()
         }
 
-        return resolveImportUrls(domain.import).map { uRL ->
-            uRL.openStream().use { stream ->
+        return resolveImportUrls(domain.import).map { ins ->
+            ins.use { stream ->
                 parse(stream)
             }
         }

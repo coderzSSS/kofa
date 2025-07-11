@@ -38,16 +38,19 @@ class DefaultDomainResolver(
 
         registerDomainType(finalDomain)
 
-        val resolved = resolveDomain(finalDomain)
+        val populatedDomain = populateDomain(finalDomain)
 
-        return populateDomain(resolved)
+        return resolveDomain(populatedDomain)
     }
 
-    private fun populateDomain(domain: ResolvedDomain): ResolvedDomain {
+    private fun populateDomain(domain: PlainDomain): PlainDomain {
 
-        val importedEnums = getImportedEnumNames(domain).map { name -> checkNotNull(domain.findEnumByName(name)) { "missing enum definition for $name" } }
-        val importedTypes = getImportedTypeNames(domain).map { name -> checkNotNull(domain.findTypeByName(name)) { "missing type definition for $name" } }
-        val importedMessages = getImportedMessageNames(domain).map { name -> checkNotNull(domain.findMessageByName(name)) { "missing message definition for $name" } }
+        val importedEnums =
+            getImportedEnumNames(domain).map { name -> checkNotNull(domain.findEnumByName(name)) { "missing enum definition for $name" } }
+        val importedTypes =
+            getImportedTypeNames(domain).map { name -> checkNotNull(domain.findTypeByName(name)) { "missing type definition for $name" } }
+        val importedMessages =
+            getImportedMessageNames(domain).map { name -> checkNotNull(domain.findMessageByName(name)) { "missing message definition for $name" } }
 
         return domain.copy(
             enums = domain.enums + importedEnums,
@@ -56,30 +59,30 @@ class DefaultDomainResolver(
         )
     }
 
-    private fun getImportedMessageNames(domain: ResolvedDomain): List<String> {
-        return domain.messages.flatMap { message ->
-            message.fields.filter { field -> field.type is GeneratedFieldType && field.type.isMessage  }
-                .map { field -> field.type.typeName }.distinct()
+    private fun getImportedMessageNames(domain: PlainDomain): List<String> {
+        return domain.imports.flatMap { d -> d.messages.map { m -> m.name } } + domain.messages.flatMap { message ->
+            message.fields.map (this::getDomainFieldType).filter { fieldType -> fieldType is GeneratedFieldType && fieldType.isMessage }
+                .map { fieldType -> fieldType.typeName }.distinct()
         }.distinct() - domain.messages.map { type -> type.name }
     }
 
-    private fun getImportedTypeNames(domain: ResolvedDomain): List<String> {
+    private fun getImportedTypeNames(domain: PlainDomain): List<String> {
         return domain.messages.flatMap { message ->
-            message.fields.filter { field -> field.type is GeneratedFieldType && !field.type.isMessage }
-                .map { field -> field.type.typeName }.distinct()
+            message.fields.map (this::getDomainFieldType).filter { fieldType -> fieldType is GeneratedFieldType && !fieldType.isMessage }
+                .map { fieldType -> fieldType.typeName }.distinct()
         }.distinct() + domain.types.flatMap { message ->
-            message.fields.filter { field -> field.type is GeneratedFieldType && !field.type.isMessage }
-                .map { field -> field.type.typeName }.distinct()
+            message.fields.map (this::getDomainFieldType).filter { fieldType -> fieldType is GeneratedFieldType && !fieldType.isMessage }
+                .map { fieldType -> fieldType.typeName }.distinct()
         }.distinct() - domain.types.map { type -> type.name }
     }
 
-    private fun getImportedEnumNames(domain: ResolvedDomain): List<String> {
+    private fun getImportedEnumNames(domain: PlainDomain): List<String> {
         return domain.messages.flatMap { message ->
-            message.fields.filter { field -> field.type.isEnum && field.type.isGenerated }
-                .map { field -> field.type.typeName }.distinct()
+            message.fields.map (this::getDomainFieldType).filter { fieldType -> fieldType.isEnum && fieldType.isGenerated }
+                .map { fieldType -> fieldType.typeName }.distinct()
         }.distinct() + domain.types.flatMap { message ->
-            message.fields.filter { field -> field.type.isEnum && field.type.isGenerated }
-                .map { field -> field.type.typeName }.distinct()
+            message.fields.map (this::getDomainFieldType).filter { fieldType -> fieldType.isEnum && fieldType.isGenerated }
+                .map { fieldType -> fieldType.typeName }.distinct()
         }.distinct() - domain.enums.map { type -> type.name }
     }
 
@@ -253,9 +256,17 @@ class DefaultDomainResolver(
     }
 
     private fun checkDomainFieldType(plainDomainField: PlainDomainField): Boolean {
+        return tryGetDomainFieldType(plainDomainField) != null
+    }
+
+    private fun tryGetDomainFieldType(plainDomainField: PlainDomainField): DomainFieldType? {
         val typeName = plainDomainField.typeName.removeSuffix(ARRAY_SUFFIX)
 
-        return typeRegistry.tryGet(typeName) != null
+        return typeRegistry.tryGet(typeName)
+    }
+
+    private fun getDomainFieldType(plainDomainField: PlainDomainField): DomainFieldType {
+        return checkNotNull(tryGetDomainFieldType(plainDomainField)) { "invalid domain field type: $plainDomainField" }
     }
 
     private fun resolveDomain(plainDomain: PlainDomain, createIdIfAbsent: Boolean = true): ResolvedDomain {

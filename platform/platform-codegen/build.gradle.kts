@@ -44,5 +44,8 @@ dependencies {
     testImplementation(rootProject.libs.kotlinCompileTestingKsp)
 
     implementation("jakarta.xml.bind:jakarta.xml.bind-api:4.0.2")
+    implementation(rootProject.libs.classgraph)
     runtimeOnly(rootProject.libs.jaxb)
+
+    testRuntimeOnly(project(":platform:platform-core"))
 }

@@ -8,7 +8,7 @@ import kotlin.reflect.KClass
 
 object KotlinGeneratorUtils {
     fun ResolvedDomain.qualifiedName(): String {
-        return "${pkgName}.${domainName}"
+        return domainName
     }
 
     fun ResolvedDomain.eventClassName(name: String) = ClassName(pkgName, resolveTypeClassName(name, true, false))
@@ -160,6 +160,20 @@ object KotlinGeneratorUtils {
         return result
     }
 
+    fun PlainDomain.findEnumByName(name: String): DomainType<DomainEnumField>? {
+        val result = this.enums.find { it.name == name }
+        if (result == null) {
+            for (domain in this.imports) {
+                val r = domain.findEnumByName(name)
+                if (r != null) {
+                    return r
+                }
+            }
+        }
+
+        return result
+    }
+
     fun ResolvedDomain.findTypeByName(name: String): DomainType<ResolvedDomainField>? {
         val result = this.types.find { it.name == name }
         if (result == null) {
@@ -174,7 +188,35 @@ object KotlinGeneratorUtils {
         return result
     }
 
+    fun PlainDomain.findTypeByName(name: String): DomainType<PlainDomainField>? {
+        val result = this.types.find { it.name == name }
+        if (result == null) {
+            for (domain in this.imports) {
+                val r = domain.findTypeByName(name)
+                if (r != null) {
+                    return r
+                }
+            }
+        }
+
+        return result
+    }
+
     fun ResolvedDomain.findMessageByName(name: String): DomainMessage<ResolvedDomainField>? {
+        val result = this.messages.find { it.name == name }
+        if (result == null) {
+            for (domain in this.imports) {
+                val r = domain.findMessageByName(name)
+                if (r != null) {
+                    return r
+                }
+            }
+        }
+
+        return result
+    }
+
+    fun PlainDomain.findMessageByName(name: String): DomainMessage<PlainDomainField>? {
         val result = this.messages.find { it.name == name }
         if (result == null) {
             for (domain in this.imports) {

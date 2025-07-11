@@ -1,5 +1,6 @@
 package io.kofa.platform.codegen.parser.xml
 
+import io.github.classgraph.ClassGraph
 import io.kotest.core.spec.style.DescribeSpec
 import kotlin.test.assertNotNull
 
@@ -9,5 +10,11 @@ class XmlDomainParserTest: DescribeSpec({
         val domain = parser.parse("test-master.xml")
 
         assertNotNull(domain)
+    }
+    it("should resolve from classpath") {
+        val parser = XmlDomainParser()
+
+        val result = parser.resolveUrl("platform-master.xml")
+        assertNotNull(result)
     }
 })

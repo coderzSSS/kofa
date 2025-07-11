@@ -69,7 +69,8 @@ object PlatformLauncher {
         val eventStreamConfig = EventStreamConfig(
             mode = eventStreamConfigOrigin.extractOrNull<EventStreamMode>("mode") ?: EventStreamMode.Auto,
             publishUri = URI(publishUrl),
-            subscribeUri = URI(subscribeUrl)
+            subscribeUri = URI(subscribeUrl),
+            config = eventStreamConfigOrigin
         )
 
         return PlatformConfig(

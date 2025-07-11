@@ -4,9 +4,12 @@ plugins {
     application
 }
 
-ksp {
-    arg("kofa.rootDir", project.projectDir.absolutePath)
-    arg("kofa.domain.master", "src/main/resources/carnival-master.xml")
+afterEvaluate {
+    ksp {
+        arg("kofa.classpath", sourceSets.main.get().runtimeClasspath.asPath)
+        arg("kofa.rootDir", project.projectDir.absolutePath)
+        arg("kofa.domain.master", "src/main/resources/carnival-master.xml")
+    }
 }
 
 application {
