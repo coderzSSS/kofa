@@ -15,6 +15,12 @@ class XmlDomainParser(classpath: String? = null) : AbstractXmlDomainParser(class
         }
     }
 
+    fun parseRawDomain(xmlPath: String, xsdFile: File? = null): Domain {
+        return resolveInputStream(xmlPath).use {
+            parseDomain(it, xsdFile)
+        }
+    }
+
     private fun parse(inputStream: InputStream, xsdFile: File? = null): PlainDomain {
         return processDomain(parseDomain(inputStream, xsdFile))
     }
@@ -115,6 +121,7 @@ class XmlDomainParser(classpath: String? = null) : AbstractXmlDomainParser(class
         return domain.messages.message.map { type ->
             DomainMessage(
                 name = type.name,
+                id = type.id?.toInt(),
                 fields = type.fields.fieldOrUniqueIdField.map { field ->
                     PlainDomainField(
                         id = field.id?.toInt(),

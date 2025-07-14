@@ -18,6 +18,7 @@ import io.kofa.platform.codegen.generator.DomainGeneratorConfig
 import io.kofa.platform.codegen.parser.DefaultDomainResolver
 import io.kofa.platform.codegen.parser.xml.XmlDomainParser
 import io.kofa.platform.codegen.writer.kotlin.BusinessDeclarationWriter
+import io.kofa.platform.codegen.writer.xml.GeneratedDomainXmlWriter
 import java.io.File
 import java.nio.file.Paths
 import kotlin.io.path.Path
@@ -79,10 +80,12 @@ class KofaDomainProcessor(private val environment: SymbolProcessorEnvironment) :
 
         val sbeJavaOutputDir = environment.getPath("kofa.sbeJavaOutputDir", "build/generated/ksp/main/java")
         val sbeXmlOutputDir = environment.getPath("kofa.sbeXmlOutputDir", "src/main/resources")
+        val domainXmlOutputDir = environment.getPath("kofa.domainXmlOutputDir", "src/main/resources")
 
         val generatorConfig = DomainGeneratorConfig(
             sbeJavaOutputDir = sbeJavaOutputDir!!,
-            sbeXmlOutputDir = sbeXmlOutputDir!!
+            sbeXmlOutputDir = sbeXmlOutputDir!!,
+            domainXmlOutputDir = domainXmlOutputDir!!
         )
 
 
@@ -96,6 +99,11 @@ class KofaDomainProcessor(private val environment: SymbolProcessorEnvironment) :
         val resolvedDomain = DefaultDomainResolver({ plainDomain }, { existingDomain }).resolve()
 
         DefaultDomainGenerator(generatorConfig, logger, codeGenerator).process(resolvedDomain)
+
+        val rawDomain = XmlDomainParser(scanClassPath).parseRawDomain(masterDomainXmlFile, domainXsd)
+
+        val file = GeneratedDomainXmlWriter(generatorConfig.domainXmlOutputDir).writeXml(rawDomain, resolvedDomain)
+        logger.info("domain generated xml file at $file")
 
         return resolvedDomain
     }
