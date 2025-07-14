@@ -1,6 +1,7 @@
 package io.kofa.platform.core.internal.service.common
 
 import io.kofa.platform.api.codec.DirectBufferCodec
+import io.kofa.platform.api.message.EventHeader
 import io.kofa.platform.api.util.EventContext
 import io.kofa.platform.api.util.EventDispatcher
 import io.kofa.platform.api.util.LazyEventDispatcher
@@ -11,9 +12,13 @@ import io.kofa.platform.core.internal.thread.eventloop.IterableTask
 internal abstract class AbstractEventBusService(name: String) : EventBusService, PlatformComponent, IterableTask(name) {
     private val dispatchers = mutableListOf<EventDispatcher>()
     private val lazyDispatchers = mutableListOf<LazyEventDispatcher>()
-    private val eventContext = MutableEventContext(0L)
+    private val eventContext = MutableEventContext(-1, -1, -1, "",0L)
 
-    data class MutableEventContext(private var eventTimestampInMillis: Long) : EventContext {
+    data class MutableEventContext(
+        override var eventType: Int,
+        override var sourceSequence: Long,
+        override var globalSequence: Long,
+        override var source: String, private var eventTimestampInMillis: Long) : EventContext {
         override val eventTimeInEpochMilli: Long get() = eventTimestampInMillis
 
         fun update(timestampInMillis: Long): MutableEventContext {
@@ -64,8 +69,7 @@ internal abstract class AbstractEventBusService(name: String) : EventBusService,
     }
 
     protected suspend fun dispatch(
-        eventType: Int,
-        eventProvider: (DirectBufferCodec) -> Any,
+        eventProvider: (DirectBufferCodec) -> Pair<EventHeader, Any>,
         action: MutableEventContext.() -> Unit
     ) {
         if (lazyDispatchers.isEmpty()) {
@@ -74,9 +78,7 @@ internal abstract class AbstractEventBusService(name: String) : EventBusService,
         eventContext.action()
 
         lazyDispatchers.forEach {
-            if (it.isInterested(eventType)) {
-                it.dispatch(eventContext, eventProvider)
-            }
+            it.dispatch(eventContext, eventProvider)
         }
 
         eventContext.reset()

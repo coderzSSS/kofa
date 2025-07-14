@@ -26,11 +26,15 @@ internal fun buildAeronBusModule(uri: URI, config: EventStreamConfig) = buildMap
             single(qualifier) {
                 val ctx = Aeron.Context()
                 if (isEmbedded) {
-                    val driver = MediaDriver.launchEmbedded()
+                    val context = MediaDriver.Context()
+                    context.dirDeleteOnShutdown(true)
+                    context.dirDeleteOnStart(true)
+
+                    val driver = MediaDriver.launchEmbedded(context)
                     ctx.aeronDirectoryName(driver.aeronDirectoryName())
                 }
 
-                ctx
+                Aeron.connect(ctx)
             }
         }
     }
@@ -41,9 +45,7 @@ internal fun buildAeronBusModule(uri: URI, config: EventStreamConfig) = buildMap
         computeIfAbsent("aeron_event_bus_${uri.path}") { key ->
             module {
                 single {
-                    val domain = get<String>(named(DOMAIN_QUALIFIER))
                     AeronEventBusService(
-                        get(named(domain)),
                         get(qualifier),
                         aeronConfig.channel ?: uri.toString(),
                         aeronConfig.sessionId
@@ -58,10 +60,12 @@ internal fun buildAeronBusModule(uri: URI, config: EventStreamConfig) = buildMap
         val aeronConfig = config.config.extract(AeronConfig::class, finalPath)
         computeIfAbsent("aeron_cmd_bus_${uri.path}") { key ->
             module {
-                single {
-                    val domain = get<String>(named(DOMAIN_QUALIFIER))
+                factory { params ->
+                    val domain = params.getOrNull<String>()
+                    val defaultDomain = get<String>(named(DOMAIN_QUALIFIER))
                     AeronCommandBusService(
-                        get(named(domain)),
+                        get(),
+                        get(named(domain ?: defaultDomain)),
                         get(qualifier),
                         aeronConfig.channel ?: uri.toString(),
                         aeronConfig.sessionId

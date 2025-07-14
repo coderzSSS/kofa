@@ -4,15 +4,15 @@ import org.apache.commons.text.WordUtils
 
 object CodecUtils {
     fun generateSourceAbbr(source: String): String {
-        val abbr = WordUtils.initials(source, ' ', '-', '_', '|').uppercase()
+        val abbr = WordUtils.abbreviate(source, 1, Int.SIZE_BYTES, "_")
         val max = Int.SIZE_BYTES.coerceAtMost(abbr.length)
 
         return abbr.substring(0, max)
     }
 
-    fun encodeSourceToInt(abbr: String): Int {
+    fun encodeSourceAbbrToInt(abbr: String): Int {
         check(abbr.length <= Int.SIZE_BYTES) {
-            "string too long, should be less or equal to ${Int.SIZE_BYTES}"
+            "string too long, should be less or equal to ${Int.SIZE_BYTES}: $abbr"
         }
 
         var value: Int = 0
@@ -22,6 +22,10 @@ object CodecUtils {
         }
 
         return value
+    }
+
+    fun encodeSourceToInt(source: String): Int {
+        return encodeSourceAbbrToInt(generateSourceAbbr(source))
     }
 
     fun decodeIntToSource(value: Int): String {

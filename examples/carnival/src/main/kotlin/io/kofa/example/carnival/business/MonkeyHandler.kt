@@ -2,6 +2,7 @@ package io.kofa.example.carnival.business
 
 import io.kofa.example.carnival.v2.AppleMessage
 import io.kofa.example.carnival.v2.BananaEvent
+import io.kofa.example.carnival.v2.SessionStartedEvent
 import io.kofa.platform.api.logger.Logger
 import io.kofa.platform.api.util.MessageSender
 import java.util.concurrent.atomic.AtomicInteger
@@ -15,5 +16,9 @@ class MonkeyHandler(
     suspend fun onBananaEvent(event: BananaEvent) {
         logger.info { "got banana ${event.name}" }
         messageSender.send(AppleMessage("${counter.incrementAndGet()}"))
+    }
+
+    fun onSessionStarted(event: SessionStartedEvent) {
+        logger.info { "got session started $event" }
     }
 }

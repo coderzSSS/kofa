@@ -5,24 +5,25 @@ import io.aeron.FragmentAssembler
 import io.aeron.Subscription
 import io.aeron.logbuffer.FragmentHandler
 import io.aeron.logbuffer.Header
+import io.kofa.platform.api.codec.CodecUtils
 import io.kofa.platform.api.codec.DirectBufferCodec
 import io.kofa.platform.core.internal.service.common.AbstractEventBusService
 import io.kofa.platform.core.internal.thread.eventloop.InvocationContext
+import io.kofa.platform.message.sbe.MessageHeaderDecoder
 import kotlinx.coroutines.runBlocking
 import org.agrona.DirectBuffer
 
 internal class AeronEventBusService(
-    private val codec: DirectBufferCodec,
-    private val ctx: Aeron.Context,
+    private val aeron: Aeron,
     private val channel: String,
     private val sessionId: Int
 ) : FragmentHandler, AbstractEventBusService("Aeron-Evt-$channel-$sessionId") {
     private val assembler = FragmentAssembler(this)
-    private lateinit var aeron: Aeron
     private lateinit var subscription: Subscription
 
+    private val messageHeaderDecoder = MessageHeaderDecoder()
+
     override fun initialize() {
-        aeron = Aeron.connect(ctx)
     }
 
     override suspend fun start() {
@@ -30,7 +31,7 @@ internal class AeronEventBusService(
     }
 
     override suspend fun stop() {
-        if (this::subscription.isInitialized && this::aeron.isInitialized) {
+        if (this::subscription.isInitialized ) {
             subscription.close()
             aeron.close()
         }
@@ -43,16 +44,26 @@ internal class AeronEventBusService(
         length: Int,
         header: Header
     ) {
-        val result = codec.decodeFromDirectBuffer<Any>(buffer, offset)
+        messageHeaderDecoder.wrap(buffer, offset)
+        val source = CodecUtils.decodeIntToSource(messageHeaderDecoder.source())
+        val ts = messageHeaderDecoder.eventTimestamp()
+        val eventType = messageHeaderDecoder.templateId()
+        val sourceSeq = messageHeaderDecoder.sourceSequence()
+        val globalSeq = messageHeaderDecoder.globalSequence()
 
         val eventProvider = { codec: DirectBufferCodec ->
-            result.second
+            codec.decodeFromDirectBuffer<Any>(buffer, offset)
         }
 
-        val templateId = result.first.eventType
-
         runBlocking {
-            dispatch(templateId, eventProvider) {}
+            dispatch(eventProvider) {
+                this.eventType = eventType
+                this.sourceSequence = sourceSeq
+                this.globalSequence = globalSeq
+                this.source = source
+                this.sourceSequence = ts
+                update(ts)
+            }
         }
     }
 

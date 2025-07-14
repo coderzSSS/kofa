@@ -5,10 +5,12 @@ import io.kofa.platform.api.config.Config
 import io.kofa.platform.api.inject.InjectContext
 import io.kofa.platform.api.inject.inject
 import io.kofa.platform.api.logger.Logger
+import io.kofa.platform.api.message.EventHeader
 import io.kofa.platform.api.meta.MessageMetaProvider
 import kotlin.reflect.KClass
 
-abstract class AbstractMessageBusService<T: Any>(private val qualifier: String? = null): EventDispatcher, LazyEventDispatcher, InjectContext {
+abstract class AbstractMessageBusService<T : Any>(private val qualifier: String? = null) : EventDispatcher,
+    LazyEventDispatcher, InjectContext {
     private lateinit var injectContext: InjectContext
 
     fun setInjectContext(injectContext: InjectContext) {
@@ -22,15 +24,18 @@ abstract class AbstractMessageBusService<T: Any>(private val qualifier: String? 
     val metaProvider: MessageMetaProvider by inject(qualifier)
     val directBufferCodec: DirectBufferCodec by inject(qualifier)
 
-    override fun isInterested(eventType: Int): Boolean {
+    private fun checkEventType(eventType: Int): Boolean {
         return metaProvider.tryGetMessageMeta(eventType) != null
     }
 
     override suspend fun <T> dispatch(
         ctx: EventContext,
-        eventProvider: (DirectBufferCodec) -> T
+        eventProvider: (DirectBufferCodec) -> Pair<EventHeader, T>
     ) {
-        dispatch(ctx, eventProvider.invoke(directBufferCodec))
+        val result = eventProvider.invoke(directBufferCodec)
+        if (checkEventType(result.first.eventType)) {
+            dispatch(ctx, result.second)
+        }
     }
 
     override fun isInterested(eventType: KClass<*>): Boolean = metaProvider.tryGetMessageMeta(eventType) != null

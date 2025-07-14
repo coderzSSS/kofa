@@ -7,11 +7,11 @@ import io.kotest.matchers.shouldBe
 object CodecUtilsTest : FunSpec({
     test("encodeSourceToInt") {
         //Arrange
-        val input = "exchg-ate 123_1 3 4 5"
+        val input = "ex-ate 123_1 3 4 5"
         val abbr = generateSourceAbbr(input)
 
         //Action
-        val output = CodecUtils.encodeSourceToInt(abbr)
+        val output = CodecUtils.encodeSourceAbbrToInt(abbr)
         val decoded = CodecUtils.decodeIntToSource(output)
 
         //Assert

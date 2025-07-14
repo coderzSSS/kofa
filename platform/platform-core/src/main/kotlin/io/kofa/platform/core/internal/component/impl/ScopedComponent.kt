@@ -59,6 +59,7 @@ internal open class ScopedComponent(
     }
 
     override suspend fun start() {
+
     }
 
     override suspend fun stop() {

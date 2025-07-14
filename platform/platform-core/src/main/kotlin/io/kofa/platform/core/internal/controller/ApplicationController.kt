@@ -20,7 +20,7 @@ import java.util.concurrent.TimeoutException
 
 internal class ApplicationController(private val koin: Koin) {
     private val eventLoop: EventLoop = koin.get()
-    private val components = mutableListOf<Component>()
+    private val components = mutableSetOf<Component>()
 
     fun configure(components: Collection<ComponentConfig>) {
         val componentMap = components.groupBy {
@@ -86,13 +86,7 @@ internal class ApplicationController(private val koin: Koin) {
         val busService = initEventBusService()
 
         // init components, platform component will be initialized first
-        this.components.forEach {
-            initComponent(it)
-
-            if (it is EventDispatcher) {
-                busService.addDispatcher(it)
-            }
-        }
+        this.components.forEach(this::initComponent)
 
         eventLoop.onShutdownExecute("close application koin injector", ShutdownPriority.ResourceCleanup) {
             koin.close()

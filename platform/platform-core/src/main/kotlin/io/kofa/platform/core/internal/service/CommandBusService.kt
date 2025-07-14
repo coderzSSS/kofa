@@ -3,7 +3,7 @@ package io.kofa.platform.core.internal.service
 import io.kofa.platform.api.message.EventHeader
 
 internal interface CommandBusService {
-    suspend fun publish(header: CommandHeader, command: Any)
+    suspend fun publish(header: CommandHeader, command: Any): Boolean
 }
 
 internal data class CommandHeader(

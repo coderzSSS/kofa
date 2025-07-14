@@ -2,12 +2,18 @@ package io.kofa.platform.core.internal.component.impl
 
 import arrow.core.None
 import arrow.core.Option
+import io.kofa.platform.api.codec.DirectBufferCodec
 import io.kofa.platform.api.inject.ComponentModuleDeclaration
+import io.kofa.platform.api.inject.get
+import io.kofa.platform.api.inject.inject
 import io.kofa.platform.api.logger.logger
+import io.kofa.platform.api.message.EventHeader
 import io.kofa.platform.api.util.AbstractMessageBusService
 import io.kofa.platform.api.util.EventContext
 import io.kofa.platform.api.util.EventDispatcher
+import io.kofa.platform.api.util.LazyEventDispatcher
 import io.kofa.platform.core.internal.component.config.ComponentConfig
+import io.kofa.platform.core.internal.service.EventBusService
 import org.koin.core.Koin
 import kotlin.reflect.KClass
 
@@ -20,7 +26,9 @@ internal class MessageHandlerComponent(
     private val startAction: Option<suspend () -> Unit> = None,
     private val stopAction: Option<suspend () -> Unit> = None,
     private val errorHandler: Option<(Throwable) -> Unit> = None
-) : ScopedComponent(componentConfig, modules, koin), EventDispatcher {
+) : ScopedComponent(componentConfig, modules, koin), EventDispatcher, LazyEventDispatcher {
+    private val codec: DirectBufferCodec by inject(getDomain())
+
     private val dispatchers by lazy {
         eagerDispatchers + lazyDispatchers.map { d -> d.value }
     }
@@ -32,6 +40,14 @@ internal class MessageHandlerComponent(
         }
 
         result
+    }
+
+    override suspend fun <T> dispatch(
+        ctx: EventContext,
+        eventProvider: (DirectBufferCodec) -> Pair<EventHeader, T>
+    ) {
+        val pair = eventProvider.invoke(codec)
+        dispatch(ctx, pair.second)
     }
 
     override fun isInterested(eventType: KClass<*>): Boolean {
@@ -52,6 +68,10 @@ internal class MessageHandlerComponent(
 
     override suspend fun start() {
         super.start()
+
+        val eventBusService = get<EventBusService>()
+
+        eventBusService.addDispatcher(this)
 
         //DON"T DELETE init dispatchers
         logger.trace { "${dispatchers.size}" }
