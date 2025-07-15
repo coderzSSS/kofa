@@ -4,10 +4,14 @@ plugins {
     application
 }
 
-ksp {
-    arg("kofa.rootDir", project.projectDir.absolutePath)
-    arg("kofa.domain.master", "src/main/resources/mds-master.xml")
+afterEvaluate {
+    ksp {
+        arg("kofa.classpath", sourceSets.main.get().runtimeClasspath.asPath)
+        arg("kofa.rootDir", project.projectDir.absolutePath)
+        arg("kofa.domain.master", "src/main/resources/mds-master.xml")
+    }
 }
+
 
 application {
     mainClass = "io.kofa.platform.launcher.LauncherMainKt"

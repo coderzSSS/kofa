@@ -254,6 +254,7 @@ class DomainMessageCodecWriter {
                     builder.addStatement("%L = 1", countVar)
                 }
 
+                builder.beginControlFlow("if (count > 0)")
                 if (!localEncoderVars.contains(fieldTypeEncoderName)) {
                     builder.addStatement("var $fieldTypeEncoderName = $typeEncoderName.${valueFieldName}Count(count)")
                     localEncoderVars.add(fieldTypeEncoderName)
@@ -263,7 +264,7 @@ class DomainMessageCodecWriter {
             }
 
             if (fieldType is ArrayFieldTypeWrapper) {
-                builder.beginControlFlow("for (value in $valueName.$valueFieldName)")
+                builder.beginControlFlow("$valueName.$valueFieldName.forEachIndexed { index, value ->")
 
                 builder.add(
                     buildEncodeFieldCodeBlock(
@@ -280,8 +281,11 @@ class DomainMessageCodecWriter {
                 )
 
                 if (needFlatten) {
+                    builder.beginControlFlow("if (index < (count -1))")
                     builder.addStatement("$fieldTypeEncoderName = $fieldTypeEncoderName.next()")
+                    builder.endControlFlow()
                 }
+
                 builder.endControlFlow()
             } else if (fieldType is GeneratedFieldType) {
                 fieldType.fields.forEach { entry ->
@@ -310,6 +314,9 @@ class DomainMessageCodecWriter {
                         )
                     )
                 }
+            }
+            if (needFlatten && !insideArray) {
+                builder.endControlFlow()
             }
         } else {
             throw IllegalStateException("cannot handle field $valueFieldName, type $fieldType")
@@ -376,7 +383,7 @@ class DomainMessageCodecWriter {
             builder.endControlFlow()
         }
 
-        builder.addStatement("else -> throw %T(%S)", IllegalStateException::class, "unknown template id \${templateId}")
+        builder.addStatement("else -> throw %T(\"%L\")", IllegalStateException::class, "unknown template id \${templateId}")
 
         // end when
         builder.endControlFlow()
@@ -433,7 +440,7 @@ class DomainMessageCodecWriter {
                     builder.addStatement("val %N = mutableListOf<%T>()", valueVarName, domain.generatedClassName(fieldType.delegateType, false))
                     builder.beginControlFlow("while(%N.hasNext())", fieldTypeDecoderName)
                 } else {
-                    builder.addStatement("lateinit var %N: %T ", valueVarName, domain.generatedClassName(fieldType))
+                    builder.addStatement("var %N: %T? = null ", valueVarName, domain.generatedClassName(fieldType))
                     builder.beginControlFlow("if(%N.hasNext())", fieldTypeDecoderName)
                 }
                 builder.addStatement("%1N = %1N.next()", fieldTypeDecoderName)
@@ -492,7 +499,7 @@ class DomainMessageCodecWriter {
 
             if (needFlatten) {
                 if (fieldType.isArray) {
-                    builder.addStatement("%N.add(%N)", valueVarName, valueVarNameUpdated)
+                    builder.addStatement("%N?.let { %N.add(it) }", valueVarNameUpdated, valueVarName)
                 }
                 builder.endControlFlow()
             }

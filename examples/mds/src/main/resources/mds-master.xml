@@ -3,6 +3,7 @@
 <domain xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         name="MarketData"
         package="io.kofa.example.mds.generated"
+        import="Platform-generated.xml"
         xsi:noNamespaceSchemaLocation="../../../../../platform/platform-codegen/src/main/resources/xsd/domain-master.xsd">
     <messages>
         <message name="PriceTick">
