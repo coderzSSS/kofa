@@ -71,6 +71,7 @@ class KofaDomainProcessorTest : FunSpec({
             kspIncremental = true
             symbolProcessorProviders = listOf(KofaDomainProcessorProvider())
             kspArgs = mutableMapOf<String, String>(
+                "kofa.classpath" to "src/test/resources",
                 "kofa.domain.master" to "src/test/resources/test-master.xml",
                 "kofa.sbeJavaOutputDir" to "build/generated/ksp/test/java",
                 "kofa.sbeXmlOutputDir" to "src/test/resources",

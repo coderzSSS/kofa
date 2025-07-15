@@ -37,7 +37,7 @@
         <message id="-14" name="BooleanProperty">
             <fields>
                 <field name="name" type="string" id="1"/>
-                <field name="value" type="boolean" id="2"/>
+                <field name="value" type="bool" id="2"/>
             </fields>
         </message>
 

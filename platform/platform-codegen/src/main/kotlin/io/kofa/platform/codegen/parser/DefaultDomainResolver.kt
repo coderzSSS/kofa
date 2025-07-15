@@ -47,10 +47,12 @@ class DefaultDomainResolver(
 
         val importedEnums =
             getImportedEnumNames(domain).map { name -> checkNotNull(domain.findEnumByName(name)) { "missing enum definition for $name" } }
-        val importedTypes =
-            getImportedTypeNames(domain).map { name -> checkNotNull(domain.findTypeByName(name)) { "missing type definition for $name" } }
+
         val importedMessages =
             getImportedMessageNames(domain).map { name -> checkNotNull(domain.findMessageByName(name)) { "missing message definition for $name" } }
+
+        val importedTypes =
+            getImportedTypeNames(domain, importedMessages).map { name -> checkNotNull(domain.findTypeByName(name)) { "missing type definition for $name" } }
 
         return domain.copy(
             enums = domain.enums + importedEnums,
@@ -66,8 +68,8 @@ class DefaultDomainResolver(
         }.distinct() - domain.messages.map { type -> type.name }
     }
 
-    private fun getImportedTypeNames(domain: PlainDomain): List<String> {
-        return domain.messages.flatMap { message ->
+    private fun getImportedTypeNames(domain: PlainDomain, importedMessages: List<DomainMessage<PlainDomainField>>): List<String> {
+        return (domain.messages + importedMessages).flatMap { message ->
             message.fields.map (this::getDomainFieldType).filter { fieldType -> fieldType is GeneratedFieldType && !fieldType.isMessage }
                 .map { fieldType -> fieldType.typeName }.distinct()
         }.distinct() + domain.types.flatMap { message ->

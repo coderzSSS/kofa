@@ -75,7 +75,7 @@ class KofaDomainProcessor(private val environment: SymbolProcessorEnvironment) :
         val scanClassPath = environment.getClassPath()
 
         logger.info("kofa scanning classpath: $scanClassPath")
-        val xmlParser = XmlDomainParser(scanClassPath)
+        val xmlParser = XmlDomainParser(scanClassPath, logger)
         val domainXsd = environment.getPath("kofa.domain.xsd")?.let { xsd -> File(xmlParser.resolveUrl(xsd).file) }
 
         val sbeJavaOutputDir = environment.getPath("kofa.sbeJavaOutputDir", "build/generated/ksp/main/java")
@@ -89,7 +89,7 @@ class KofaDomainProcessor(private val environment: SymbolProcessorEnvironment) :
         )
 
 
-        val plainDomain = XmlDomainParser(scanClassPath).parse(masterDomainXmlFile, domainXsd)
+        val plainDomain = xmlParser.parse(masterDomainXmlFile, domainXsd)
         val existingDomain = generatedDomainXmlFile?.let {
             xmlParser.tryResolveUrl(it)?.let { uRL ->
                 xmlParser.parse(uRL.file, domainXsd)
@@ -100,7 +100,7 @@ class KofaDomainProcessor(private val environment: SymbolProcessorEnvironment) :
 
         DefaultDomainGenerator(generatorConfig, logger, codeGenerator).process(resolvedDomain)
 
-        val rawDomain = XmlDomainParser(scanClassPath).parseRawDomain(masterDomainXmlFile, domainXsd)
+        val rawDomain = xmlParser.parseRawDomain(masterDomainXmlFile, domainXsd)
 
         val file = GeneratedDomainXmlWriter(generatorConfig.domainXmlOutputDir).writeXml(rawDomain, resolvedDomain)
         logger.info("domain generated xml file at $file")

@@ -182,6 +182,7 @@ class SbeMessageXmlWriter {
     ): ResolvedDomainField {
         return domain.types.singleOrNull { type -> type.name == typeName }?.fields?.singleOrNull { field -> field.name == typeFieldName }
             ?: domain.messages.singleOrNull { type -> type.name == typeName }?.fields?.singleOrNull { field -> field.name == typeFieldName }
+            ?: domain.imports.mapNotNull { d -> runCatching { getDomainTypeField(d, typeName, typeFieldName)}.getOrNull()}.singleOrNull()
             ?: throw java.lang.IllegalStateException("cannot found field definition for $typeName -> $typeFieldName")
     }
 

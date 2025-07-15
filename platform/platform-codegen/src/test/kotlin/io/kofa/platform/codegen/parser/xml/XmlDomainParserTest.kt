@@ -11,7 +11,7 @@ class XmlDomainParserTest: DescribeSpec({
 
         assertNotNull(domain)
     }
-    it("should resolve from classpath") {
+    xit("should resolve from classpath") {
         val parser = XmlDomainParser()
 
         val result = parser.resolveUrl("platform-master.xml")

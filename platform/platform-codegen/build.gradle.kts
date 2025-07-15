@@ -47,5 +47,4 @@ dependencies {
     implementation(rootProject.libs.classgraph)
     runtimeOnly(rootProject.libs.jaxb)
 
-    testRuntimeOnly(project(":platform:platform-core"))
 }

@@ -1,5 +1,6 @@
 package io.kofa.platform.codegen.parser.xml
 
+import com.google.devtools.ksp.processing.KSPLogger
 import io.github.classgraph.ClassGraph
 import io.kofa.platform.codegen.xsd.generated.Domain
 import jakarta.xml.bind.JAXBContext
@@ -13,7 +14,7 @@ import javax.xml.XMLConstants
 import javax.xml.transform.stream.StreamSource
 import javax.xml.validation.SchemaFactory
 
-abstract class AbstractXmlDomainParser(private val classpath: String? = null) {
+abstract class AbstractXmlDomainParser(private val logger: KSPLogger?, private val classpath: String? = null) {
     protected fun parseDomain(inputStream: InputStream, xsdFile: File? = null): Domain {
         val context = JAXBContext.newInstance(Domain::class.java.packageName, Domain::class.java.classLoader)
 
@@ -62,7 +63,11 @@ abstract class AbstractXmlDomainParser(private val classpath: String? = null) {
         }
 
         val result = classGraph.scan()
-        val classpathUrl = result.getResourcesWithPathIgnoringAccept(path).firstOrNull()?.url
+        val resource = result.getResourcesWithPathIgnoringAccept(path).firstOrNull()
+
+        logger?.info("resolved resource ${resource?.pathRelativeToClasspathElement} for $path")
+
+        val classpathUrl = resource?.url
 
         return classpathUrl
             ?: // If not found in classpath, try to resolve as a file path

@@ -1,5 +1,6 @@
 package io.kofa.platform.codegen.parser.xml
 
+import com.google.devtools.ksp.processing.KSPLogger
 import io.kofa.platform.codegen.domain.*
 import io.kofa.platform.codegen.xsd.generated.Domain
 import io.kofa.platform.codegen.xsd.generated.ImplementList
@@ -8,7 +9,7 @@ import io.kofa.platform.codegen.xsd.generated.Type
 import java.io.File
 import java.io.InputStream
 
-class XmlDomainParser(classpath: String? = null) : AbstractXmlDomainParser(classpath) {
+class XmlDomainParser(classpath: String? = null, logger: KSPLogger? = null) : AbstractXmlDomainParser(logger, classpath) {
     fun parse(xmlPath: String, xsdFile: File? = null): PlainDomain {
         return resolveInputStream(xmlPath).use {
             parse(it, xsdFile)

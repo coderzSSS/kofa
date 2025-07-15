@@ -3,7 +3,7 @@
 <domain xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         name="test"
         package="org.lockfast.domain.test.generated"
-        import="common-master.xml,Platform-generated.xml"
+        import="common-master.xml,platform-domain.xml"
         xsi:noNamespaceSchemaLocation="../../main/resources/xsd/domain-master.xsd">
     <interfaces>
         <interface name="InterfaceA">
