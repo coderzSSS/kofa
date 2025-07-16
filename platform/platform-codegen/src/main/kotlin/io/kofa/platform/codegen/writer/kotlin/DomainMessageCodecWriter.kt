@@ -265,6 +265,7 @@ class DomainMessageCodecWriter {
 
             if (fieldType is ArrayFieldTypeWrapper) {
                 builder.beginControlFlow("$valueName.$valueFieldName.forEachIndexed { index, value ->")
+                builder.addStatement("$fieldTypeEncoderName = $fieldTypeEncoderName.next()")
 
                 builder.add(
                     buildEncodeFieldCodeBlock(
@@ -280,13 +281,6 @@ class DomainMessageCodecWriter {
                     )
                 )
 
-                if (needFlatten) {
-                    builder.beginControlFlow("if (index < (count -1))")
-                    builder.addStatement("$fieldTypeEncoderName = $fieldTypeEncoderName.next()")
-                    builder.endControlFlow()
-                }
-
-                builder.endControlFlow()
             } else if (fieldType is GeneratedFieldType) {
                 fieldType.fields.forEach { entry ->
                     val typeFieldName = if (needFlatten) {
@@ -400,7 +394,8 @@ class DomainMessageCodecWriter {
         decoderFieldName: String,
         fieldType: DomainFieldType,
         localDecoderVars: MutableSet<String>,
-        domain: ResolvedDomain
+        domain: ResolvedDomain,
+        insideArray: Boolean = false
     ): CodeBlock {
         val builder = CodeBlock.builder()
 
@@ -439,11 +434,14 @@ class DomainMessageCodecWriter {
                     valueVarNameUpdated = "${valueVarName}Item"
                     builder.addStatement("val %N = mutableListOf<%T>()", valueVarName, domain.generatedClassName(fieldType.delegateType, false))
                     builder.beginControlFlow("while(%N.hasNext())", fieldTypeDecoderName)
-                } else {
+                    builder.addStatement("%1N = %1N.next()", fieldTypeDecoderName)
+                } else if (!insideArray){
                     builder.addStatement("var %N: %T? = null ", valueVarName, domain.generatedClassName(fieldType))
                     builder.beginControlFlow("if(%N.hasNext())", fieldTypeDecoderName)
+                    builder.addStatement("%1N = %1N.next()", fieldTypeDecoderName)
+                } else {
+                    builder.addStatement("var %N: %T? = null ", valueVarName, domain.generatedClassName(fieldType))
                 }
-                builder.addStatement("%1N = %1N.next()", fieldTypeDecoderName)
             }
 
             if (fieldType is GeneratedFieldType) {
@@ -475,7 +473,8 @@ class DomainMessageCodecWriter {
                         flattenFieldName(valueFieldName, valueFieldName),
                         fieldType.delegateType,
                         localDecoderVars,
-                        domain
+                        domain,
+                        true
                     )
                 )
             }
@@ -501,7 +500,9 @@ class DomainMessageCodecWriter {
                 if (fieldType.isArray) {
                     builder.addStatement("%N?.let { %N.add(it) }", valueVarNameUpdated, valueVarName)
                 }
-                builder.endControlFlow()
+                if (fieldType is ArrayFieldTypeWrapper || !insideArray) {
+                    builder.endControlFlow()
+                }
             }
 
         } else {
