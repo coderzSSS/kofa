@@ -4,6 +4,7 @@ import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.kspArgs
 import com.tschuchort.compiletesting.kspIncremental
+import com.tschuchort.compiletesting.kspSourcesDir
 import com.tschuchort.compiletesting.kspWithCompilation
 import com.tschuchort.compiletesting.symbolProcessorProviders
 import io.kotest.core.spec.style.FunSpec
@@ -67,13 +68,12 @@ class KofaDomainProcessorTest : FunSpec({
             sources = listOf(testHandlerSource, testModuleSource)
             inheritClassPath = true
             kotlincArguments = listOf("-Xskip-metadata-version-check")
-            kspWithCompilation = true
+            kspWithCompilation = false
             kspIncremental = true
             symbolProcessorProviders = listOf(KofaDomainProcessorProvider())
             kspArgs = mutableMapOf<String, String>(
-                "kofa.classpath" to "src/test/resources",
                 "kofa.domain.master" to "src/test/resources/test-master.xml",
-                "kofa.sbeJavaOutputDir" to "build/generated/ksp/test/java",
+                "kofa.sbeJavaOutputDir" to "${kspSourcesDir.resolve("kotlin").path}",
                 "kofa.sbeXmlOutputDir" to "src/test/resources",
             )
         }

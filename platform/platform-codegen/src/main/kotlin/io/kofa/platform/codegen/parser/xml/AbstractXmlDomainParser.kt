@@ -58,14 +58,14 @@ abstract class AbstractXmlDomainParser(private val logger: KSPLogger?, private v
                 .enableAllInfo()
                 .acceptPathsNonRecursive(path)
 
-        classpath?.let {
-            classGraph.overrideClasspath(it)
+        if (!classpath.isNullOrBlank()) {
+            classGraph.overrideClasspath(classpath)
         }
 
         val result = classGraph.scan()
         val resource = result.getResourcesWithPathIgnoringAccept(path).firstOrNull()
 
-        logger?.info("resolved resource ${resource?.pathRelativeToClasspathElement} for $path")
+        logger?.info("resolved resource $resource for $path")
 
         val classpathUrl = resource?.url
 

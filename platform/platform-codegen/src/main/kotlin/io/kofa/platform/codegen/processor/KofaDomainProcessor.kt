@@ -118,16 +118,11 @@ class KofaDomainProcessor(private val environment: SymbolProcessorEnvironment) :
     }
 
     private fun SymbolProcessorEnvironment.getClassPath(): String {
-        val rootDir = options["kofa.rootDir"]
         val classpath = options["kofa.classpath"]
 
         return buildString {
-            append(".")
-            if (rootDir != null) {
-                append(File.pathSeparator).append(rootDir)
-            }
             if (classpath != null) {
-                append(File.pathSeparator).append(classpath)
+                append(classpath)
             }
         }
     }
