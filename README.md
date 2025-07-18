@@ -1,27 +1,141 @@
-# KOFA(Kotlin for All)
-KOFA is a pure kotlin library to make life much easier to build fast event driven applications, 
-it is built on foundation concepts such as reactive & meta programing, with the help of compiler plugin to generate code stubs, 
-it makes possible to 100% separate business logic from the library.
+# KOFA - Kotlin for All 🚀
 
-# Architecture Concern
-KOFA believe an application should break into at least 3 main modules 
-- **Application** - the config and dependencies that declared in order to accomplish a business task
-- **Business** - the business domain logic that consume domain event to perform actual work.
-- **Platform** - runtime library that provides business neutral features such as config parsing, component discovery, lifecycle management, error handing, memory & thread management,
-  event encoding/decoding & dispatching, replay & back-testing, latency optimization etc.
+A high-performance, event-driven application framework built entirely in Kotlin. KOFA leverages reactive programming, metaprogramming, and compiler plugins to separate business logic completely from infrastructure concerns.
 
-# Project Structure
-![img.png](img.png)
+## ✨ Key Features
 
-# Usage & Example
-goto `examples` module to explore the usage, take carnival for example, in order to react on Banana/Apple events, it just takes 3 steps at compile time
-1. write the domain message definition (in xml or kotlin dsl)
-2. write the event handlers
-3. segregate the handlers into components which can be deployed individually at runtime.
+- **Pure Kotlin**: 100% Kotlin implementation with native DSL support
+- **Event-Driven**: Built for reactive, high-throughput event processing
+- **Zero Boilerplate**: Compiler plugins generate all infrastructure code
+- **Modular**: Components deploy independently at runtime
+- **High Performance**: Optimized for low-latency applications with Aeron messaging
 
-at runtime, you need a configuration file to bring up the application.
-simply run `./gradlew examples:carnival:run --args='-c application-carnival.conf'`
+## 🏗️ Architecture
 
+KOFA enforces a clean 3-tier architecture:
 
-# Inspiration & Tutorial
-here is a chinese feishu doc [领略kotlin之美，手把手带你搭建一个牛逼轰轰的业务框架](https://pv2sgxx0xup.feishu.cn/docx/LqLgdaNoeoNkhexMMjkcgJX1n4g?from=from_copylink) used to explain the idea
+| Layer | Responsibility |
+|-------|----------------|
+| **Application** | Configuration, dependency declaration, runtime setup |
+| **Business** | Domain logic, event handlers, business rules |
+| **Platform** | Infrastructure, lifecycle management, event routing, performance optimization |
+
+## 🚀 Quick Start
+
+### 1. Define Your Domain
+Create message definitions by XML file, annotation or Kotlin DSL, currently only xml domain definition is supported
+
+```xml
+<domain name="carnival">
+    <message name="Ping">
+        <field name="num" type="int"/>
+    </message>
+    <message name="Pong">
+        <field name="num" type="int"/>
+    </message>
+</domain>
+```
+
+### 2. Implement Event Handlers 
+```kotlin
+class MonkeyHandler(val config: MonkeyConfig) {
+    fun handle(event: PongEvent) {
+        // Your business logic here
+        println("Processing ${event.num}")
+    }
+}
+```
+
+### 3. Create component module
+```kotlin
+@DomainModule(componentType="Monkey", handler = MonkeyHandler::class)
+class MonkeyModule {
+    fun config() = {
+        scoped{
+            MonkeyConfig()
+        }
+    }
+}
+```
+
+### 4. Configure Runtime
+Create `application.conf`:
+```hocon
+kofa {
+  domain = carnival
+  timezone = Asia/Shanghai
+
+  event-loop {
+    shutdown-timeout-seconds = 10
+    execution-policy = "wait"
+    sleepCycles = "10"
+    durationMillis = "1000"
+  }
+
+  event-stream {
+    mode = "live"
+    url = "aeron://carnival?embedded=true"
+    aeron {
+      channel = "aeron:ipc"
+      sessionId = 1
+    }
+  }
+  
+  component {
+    Monkey: {
+      enabled = true
+    } 
+  }
+}
+
+```
+
+### 5. Run Your Application
+```bash
+./gradlew examples:carnival:run --args='-c application-carnival.conf'
+```
+
+## 📁 Project Structure
+
+```
+kofa/
+├── platform/          # Core framework
+│   ├── platform-api/      # Public APIs and annotations
+│   ├── platform-core/     # Runtime implementation
+│   ├── platform-codegen/  # Code generation
+│   └── platform-launcher/ # Application launcher
+├── examples/          # Sample applications
+│   ├── carnival/          # Simple event handling demo
+│   └── mds/              # Market data system example
+└── build.gradle.kts   # Kotlin DSL build configuration
+```
+
+## 📚 Examples
+
+Explore working examples in the `examples/` directory:
+
+- **Carnival**: Basic event handling with clowns and monkeys 🎪
+- **MDS**: Real-world portfolio management system 📈
+
+## 🔧 Build & Development
+
+```bash
+# Build all modules
+./gradlew build
+
+# Run specific example
+./gradlew examples:mds:run --args='-c application-mds.conf'
+```
+
+## 📖 Resources
+
+- [中文教程](https://pv2sgxx0xup.feishu.cn/docx/LqLgdaNoeoNkhexMMjkcgJX1n4g) - Detailed tutorial (Chinese)
+- [Examples](./examples) - Complete working examples
+
+## 🎯 Use Cases
+
+- High-frequency trading systems
+- Real-time data processing pipelines
+- Event-driven microservices
+- Low-latency messaging applications
+- Backtesting and simulation engines
