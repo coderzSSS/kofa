@@ -7,6 +7,7 @@ import io.kofa.platform.codegen.domain.type.ArrayFieldTypeWrapper
 import io.kofa.platform.codegen.domain.type.DomainFieldType
 import io.kofa.platform.codegen.domain.type.GeneratedEnumFieldType
 import io.kofa.platform.codegen.domain.type.GeneratedFieldType
+import io.kofa.platform.codegen.domain.type.JavaBuiltinType
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.findEnumByName
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.findMessageByName
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.findTypeByName
@@ -367,9 +368,15 @@ class DefaultDomainResolver(
     private fun resolveDomainFieldType(plainDomainField: PlainDomainField): DomainFieldType {
         val typeName = plainDomainField.typeName.removeSuffix(ARRAY_SUFFIX)
 
-        val type = checkNotNull(
+        var type = checkNotNull(
             typeRegistry.tryGet(typeName)
         ) { "no type found from registry by name: $typeName" }
+
+        if (plainDomainField.length != null && plainDomainField.length > 0) {
+            if (type is JavaBuiltinType) {
+                type = type.copy(fixedLength = plainDomainField.length)
+            }
+        }
 
         if (plainDomainField.typeName.endsWith(ARRAY_SUFFIX)) {
             return ArrayFieldTypeWrapper(

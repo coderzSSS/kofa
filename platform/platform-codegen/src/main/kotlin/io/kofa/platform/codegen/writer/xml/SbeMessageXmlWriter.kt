@@ -108,7 +108,7 @@ class SbeMessageXmlWriter {
     }
 
     private fun buildTypeElement(document: Document, type: DomainType<ResolvedDomainField>): Element? {
-        val isComposite = type.fields.all { field -> field.type.isPrimitive }
+        val isComposite = type.fields.all { field -> field.type.isPrimitive && field.type.sbeType != null }
 
         if (isComposite) {
             val element = document.createElement("composite")

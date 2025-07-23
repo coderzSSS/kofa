@@ -281,6 +281,7 @@ class DomainMessageCodecWriter {
                     )
                 )
 
+                builder.endControlFlow()
             } else if (fieldType is GeneratedFieldType) {
                 fieldType.fields.forEach { entry ->
                     val typeFieldName = if (needFlatten) {
@@ -305,6 +306,7 @@ class DomainMessageCodecWriter {
                             entry.value,
                             domain,
                             localEncoderVars,
+                            insideArray
                         )
                     )
                 }
