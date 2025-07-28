@@ -196,7 +196,7 @@ class DomainMessageCodecWriter {
             }
         }
 
-        if (fieldType.isPrimitive || fieldType.isEnum || fieldType.isBoolean || fieldType == JavaBuiltinType.STRING) {
+        if (!fieldType.isArray && (fieldType.isPrimitive || fieldType.isEnum || fieldType.isBoolean || fieldType.typeName == JavaBuiltinType.STRING.typeName)) {
             var valueStatement = if (isFieldValueNullable) {
                 "it"
             } else if (insideArray) {
@@ -265,22 +265,28 @@ class DomainMessageCodecWriter {
 
             if (fieldType is ArrayFieldTypeWrapper) {
                 builder.beginControlFlow("$valueName.$valueFieldName.forEachIndexed { index, value ->")
-                builder.addStatement("$fieldTypeEncoderName = $fieldTypeEncoderName.next()")
+                if (!needFlatten && fieldType.isFixed) {
+                    //fixed length array
+                    builder.beginControlFlow("if (index < %L)", "${typeEncoderName}.${valueFieldName}Length()")
+                    builder.addStatement("${typeEncoderName}.${valueFieldName}(index, value)")
+                    builder.endControlFlow()
+                } else {
+                    builder.addStatement("$fieldTypeEncoderName = $fieldTypeEncoderName.next()")
 
-                builder.add(
-                    buildEncodeFieldCodeBlock(
-                        fieldTypeEncoderName,
-                        "value",
-                        valueFieldName,
-                        false,
-                        flattenFieldName(valueFieldName, valueFieldName),
-                        fieldType.delegateType,
-                        domain,
-                        localEncoderVars,
-                        true
+                    builder.add(
+                        buildEncodeFieldCodeBlock(
+                            fieldTypeEncoderName,
+                            "value",
+                            valueFieldName,
+                            false,
+                            flattenFieldName(valueFieldName, valueFieldName),
+                            fieldType.delegateType,
+                            domain,
+                            localEncoderVars,
+                            true
+                        )
                     )
-                )
-
+                }
                 builder.endControlFlow()
             } else if (fieldType is GeneratedFieldType) {
                 fieldType.fields.forEach { entry ->
@@ -401,7 +407,7 @@ class DomainMessageCodecWriter {
     ): CodeBlock {
         val builder = CodeBlock.builder()
 
-        if (fieldType.isPrimitive || fieldType.isEnum || fieldType.isBoolean || fieldType == JavaBuiltinType.STRING) {
+        if (!fieldType.isArray && (fieldType.isPrimitive || fieldType.isEnum || fieldType.isBoolean || fieldType.typeName == JavaBuiltinType.STRING.typeName)) {
             var valueStatement = "%L.%L()"
 
             if (fieldType.isBoolean) {
@@ -467,18 +473,26 @@ class DomainMessageCodecWriter {
                     )
                 }
             } else if (fieldType is ArrayFieldTypeWrapper) {
-                builder.add(
-                    buildDecodeFieldCodeBlock(
-                        fieldTypeDecoderName,
-                        valueVarNameUpdated,
-                        valueFieldName,
-                        flattenFieldName(valueFieldName, valueFieldName),
-                        fieldType.delegateType,
-                        localDecoderVars,
-                        domain,
-                        true
+                if (!needFlatten && fieldType.isFixed) {
+                    //fixed length array
+                    builder.addStatement("val %N = mutableListOf<%T>()", valueVarName, domain.generatedClassName(fieldType.delegateType, false))
+                    builder.beginControlFlow("for(i in 0..%L)", "${typeDecoderName}.${valueFieldName}Length()")
+                    builder.addStatement("%N.add(${typeDecoderName}.${valueFieldName}(i))", valueVarName)
+                    builder.endControlFlow()
+                } else {
+                    builder.add(
+                        buildDecodeFieldCodeBlock(
+                            fieldTypeDecoderName,
+                            valueVarNameUpdated,
+                            valueFieldName,
+                            flattenFieldName(valueFieldName, valueFieldName),
+                            fieldType.delegateType,
+                            localDecoderVars,
+                            domain,
+                            true
+                        )
                     )
-                )
+                }
             }
 
             if (fieldType is GeneratedFieldType) {

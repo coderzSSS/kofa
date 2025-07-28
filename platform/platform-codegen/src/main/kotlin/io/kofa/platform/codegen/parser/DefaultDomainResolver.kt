@@ -45,12 +45,11 @@ class DefaultDomainResolver(
     }
 
     private fun populateDomain(domain: PlainDomain): PlainDomain {
-
-        val importedEnums =
-            getImportedEnumNames(domain).map { name -> checkNotNull(domain.findEnumByName(name)) { "missing enum definition for $name" } }
-
         val importedMessages =
             getImportedMessageNames(domain).map { name -> checkNotNull(domain.findMessageByName(name)) { "missing message definition for $name" } }
+
+        val importedEnums =
+            getImportedEnumNames(domain, importedMessages).map { name -> checkNotNull(domain.findEnumByName(name)) { "missing enum definition for $name" } }
 
         val importedTypes =
             getImportedTypeNames(domain, importedMessages).map { name -> checkNotNull(domain.findTypeByName(name)) { "missing type definition for $name" } }
@@ -79,8 +78,8 @@ class DefaultDomainResolver(
         }.distinct() - domain.types.map { type -> type.name }
     }
 
-    private fun getImportedEnumNames(domain: PlainDomain): List<String> {
-        return domain.messages.flatMap { message ->
+    private fun getImportedEnumNames(domain: PlainDomain, importedMessages: List<DomainMessage<PlainDomainField>>): List<String> {
+        return (domain.messages + importedMessages).flatMap { message ->
             message.fields.map (this::getDomainFieldType).filter { fieldType -> fieldType.isEnum && fieldType.isGenerated }
                 .map { fieldType -> fieldType.typeName }.distinct()
         }.distinct() + domain.types.flatMap { message ->
@@ -372,17 +371,16 @@ class DefaultDomainResolver(
             typeRegistry.tryGet(typeName)
         ) { "no type found from registry by name: $typeName" }
 
-        if (plainDomainField.length != null && plainDomainField.length > 0) {
-            if (type is JavaBuiltinType) {
-                type = type.copy(fixedLength = plainDomainField.length)
-            }
-        }
-
         if (plainDomainField.typeName.endsWith(ARRAY_SUFFIX)) {
             return ArrayFieldTypeWrapper(
                 delegateType = type,
                 fixedLength = plainDomainField.length
             )
+        } else if (plainDomainField.length != null && plainDomainField.length > 0) {
+            if (type is JavaBuiltinType && type.typeName == JavaBuiltinType.STRING.typeName) {
+                // fixed length string
+                type = type.copy(sbeType = "char", isPrimitive = true, fixedLength = plainDomainField.length)
+            }
         }
 
         return type

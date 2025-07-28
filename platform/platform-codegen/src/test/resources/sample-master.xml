@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<domain xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        name="sample"
+        package="org.lockfast.domain.test.generated"
+        xsi:noNamespaceSchemaLocation="../../main/resources/xsd/domain-master.xsd">
+    <types>
+        <type name="Engine">
+            <fields>
+                <field name="capacity" type="int"/>
+                <field name="numCylinders" type="short"/>
+                <field name="manufacturerCode" type="string" max-length="3"/>
+                <field name="boosterEnabled" type="bool"/>
+            </fields>
+        </type>
+    </types>
+
+    <enums>
+        <enum name="Model">
+            <item name="A"/>
+            <item name="B"/>
+            <item name="C"/>
+        </enum>
+    </enums>
+
+    <messages>
+        <message name="Car">
+            <fields>
+                <field name="serialNumber" type="long"/>
+                <field name="available" type="bool"/>
+                <field name="code" type="Model"/>
+                <field name="engine" type="Engine"/>
+                <field name="someNumbers" type="int[]" max-length="3"/>
+                <field name="extraEngines" type="Engine[]" max-length="2"/>
+            </fields>
+        </message>
+
+    </messages>
+</domain>

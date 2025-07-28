@@ -50,8 +50,30 @@ object KotlinGeneratorUtils {
 
     fun getSealedDomainMessageName(domainName: String) = domainName.cap() + "Message"
 
+    fun DomainFieldType.resolveSbeType(): String {
+        check(isSbeType) { "$this is not a sbeType" }
+
+        val name = if (isGenerated) typeName else "__$typeName"
+
+        return if (isFixed) {
+            "${name}$fixedLength"
+        } else if (isGenerated) {
+            name
+        } else {
+            checkNotNull(sbeType) { "$this does not have a SBE name" }
+        }
+    }
+
     fun isNeedFlatten(fieldType: DomainFieldType): Boolean {
-        return fieldType is ArrayFieldTypeWrapper || (fieldType is GeneratedFieldType && !fieldType.fields.all { e -> e.value.isPrimitive })
+        if (fieldType.isFixed) {
+            return !fieldType.isPrimitive
+        }
+
+        return !fieldType.isSbeType
+    }
+
+    fun DomainFieldType.isEligibleForField(): Boolean {
+        return isEnum || isBoolean || isPrimitive || isComposite
     }
 
     fun resolveTypeName(

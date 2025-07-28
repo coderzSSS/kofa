@@ -9,7 +9,12 @@ class SbeMessageXmlWriterTest : FunSpec({
     test("generate xml success") {
         val result = SbeMessageXmlWriter().generateXmlTo(GeneratorTestUtils.resolvedDomain, StringWriter())
 
-        val output = result.buffer.toString()
+        assertNotNull(result)
+    }
+
+    test("generate sample xml success") {
+        val result = SbeMessageXmlWriter().generateXmlTo(GeneratorTestUtils.sampleResolvedDomain, StringWriter())
+
         assertNotNull(result)
     }
 })

@@ -13,6 +13,5 @@ data class GeneratedEnumFieldType(
     override val isPrimitive: Boolean get() = false
     override val isBoolean get() = false
     override val isGenerated get() = true
-    override val isSbeType get() = false
     override val sbeType: String? get() = null
 }

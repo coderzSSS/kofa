@@ -5,9 +5,13 @@ import io.kofa.platform.codegen.domain.type.ArrayFieldTypeWrapper
 import io.kofa.platform.codegen.domain.type.DomainFieldType
 import io.kofa.platform.codegen.domain.type.GeneratedFieldType
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.flattenFieldName
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.isEligibleForField
 import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.isNeedFlatten
+import io.kofa.platform.codegen.writer.kotlin.KotlinGeneratorUtils.resolveSbeType
 import org.w3c.dom.Document
 import org.w3c.dom.Element
+import org.w3c.dom.Node
+import org.w3c.dom.NodeList
 import java.io.Writer
 import java.util.concurrent.atomic.AtomicInteger
 import javax.xml.parsers.DocumentBuilderFactory
@@ -15,6 +19,10 @@ import javax.xml.transform.OutputKeys
 import javax.xml.transform.TransformerFactory
 import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
+import javax.xml.xpath.XPath
+import javax.xml.xpath.XPathConstants
+import javax.xml.xpath.XPathFactory
+
 
 class SbeMessageXmlWriter {
     fun <T : Writer> generateXmlTo(domain: ResolvedDomain, writer: T): T {
@@ -56,12 +64,24 @@ class SbeMessageXmlWriter {
 
         document.appendChild(root)
 
+        removeBlankLines(document)
+
         return document
+    }
+
+    private fun removeBlankLines(doc: Document) {
+        val xp: XPath = XPathFactory.newInstance().newXPath()
+        val nl = xp.evaluate("//text()[normalize-space(.)='']", doc, XPathConstants.NODESET) as NodeList
+        for (i in 0..<nl.length) { // note the position of the '++'
+            val node: Node = nl.item(i)
+            node.parentNode.removeChild(node)
+        }
     }
 
     private fun loadDefaultSbeTypesElement(): Element {
         val result = this::class.java.classLoader.getResourceAsStream("sbe-common-types.xml")?.use { stream ->
             val factory = DocumentBuilderFactory.newInstance()
+            factory.isValidating = true
             factory.isIgnoringElementContentWhitespace = true
 
             val builder = factory.newDocumentBuilder()
@@ -78,7 +98,15 @@ class SbeMessageXmlWriter {
             buildEnumElement(document, type)
         } + domain.types.mapNotNull { type ->
             buildTypeElement(document, type)
-        }
+        } + getFixedLengthMessageFieldTypes(domain).mapNotNull{type -> buildArrayTypeElement(document, type)}
+    }
+
+    private fun getFixedLengthMessageFieldTypes(domain: ResolvedDomain): Set<DomainFieldType> {
+        return domain.messages.flatMap { message ->
+            message.fields.filter { field -> field.type.isPrimitive && field.type.isFixed }.map { field ->
+                field.type
+            }
+        }.toSet()
     }
 
     private fun createSbeMessages(document: Document, domain: ResolvedDomain): List<Element> {
@@ -108,20 +136,45 @@ class SbeMessageXmlWriter {
     }
 
     private fun buildTypeElement(document: Document, type: DomainType<ResolvedDomainField>): Element? {
-        val isComposite = type.fields.all { field -> field.type.isPrimitive && field.type.sbeType != null }
+        val isComposite = type.fields.all { field -> field.type.isComposite && (field.type.isGenerated || field.type.sbeType != null) }
 
         if (isComposite) {
             val element = document.createElement("composite")
             element.setAttribute("name", type.name)
             type.fields.forEach { field ->
-                val fieldElement = document.createElement("type")
+                val isRef = field.type.isGenerated || field.type.isBoolean || (field.type.isArray && field.type.isFixed)
+                val fieldElement = document.createElement(if(isRef) "ref" else "type")
+
                 fieldElement.setAttribute("name", field.name)
-                fieldElement.setAttribute("primitiveType", field.type.sbeType)
+
+                if (isRef) {
+                    fieldElement.setAttribute("type", field.type.resolveSbeType())
+                } else {
+                    fieldElement.setAttribute("primitiveType", field.type.sbeType)
+
+                    field.type.fixedLength?.let { length ->
+                        if (length > 1) {
+                            fieldElement.setAttribute("length", length.toString())
+                        }
+                    }
+                }
+
+                element.appendChild(fieldElement)
             }
+
             return element
         }
 
         return null
+    }
+
+    private fun buildArrayTypeElement(document: Document, arrayType: DomainFieldType): Element? {
+        val element = document.createElement("type")
+        element.setAttribute("name", arrayType.resolveSbeType())
+        element.setAttribute("primitiveType", arrayType.sbeType)
+        element.setAttribute("length", arrayType.fixedLength.toString())
+
+        return element
     }
 
     private fun buildMessageElement(
@@ -167,7 +220,7 @@ class SbeMessageXmlWriter {
     private fun sortFieldType(type: DomainFieldType): Int {
         return if (isNeedFlatten(type)) {
             1
-        } else if (type.isPrimitive || type.isEnum || type.isBoolean || type.isFixed) {
+        } else if (type.isEligibleForField()) {
             0
         } else {
             2
@@ -237,7 +290,9 @@ class SbeMessageXmlWriter {
         fieldId: Int?,
         fieldType: DomainFieldType
     ): Element {
-        val elementName = if (fieldType.isPrimitive || fieldType.isEnum || fieldType.isBoolean || fieldType.isFixed) {
+        check(fieldType.isSbeType) { "${fieldType.typeName} is not a sbeType field" }
+
+        val elementName = if (fieldType.isEligibleForField()) {
             "field"
         } else {
             "data"
@@ -246,13 +301,8 @@ class SbeMessageXmlWriter {
         val fieldElement = document.createElement(elementName)
         fieldElement.setAttribute("name", fieldName)
         fieldElement.setAttribute("id", checkNotNull(fieldId?.toString()) { "missing id for field $fieldName" })
-        if (fieldType.isSbeType) {
-            fieldElement.setAttribute("type", fieldType.sbeType)
-        } else if (fieldType.isEnum) {
-            fieldElement.setAttribute("type", fieldType.typeName)
-        } else {
-            throw IllegalStateException("cannot handle field $fieldName type $fieldType")
-        }
+
+        fieldElement.setAttribute("type", fieldType.resolveSbeType())
 
         return fieldElement
     }

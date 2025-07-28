@@ -10,4 +10,10 @@ class DomainMessageCodecWriterTest : FunSpec({
 
         assertNotNull(result)
     }
+
+    test("generate sample message codec succeeds") {
+        val result = DomainMessageCodecWriter().generate(GeneratorTestUtils.sampleResolvedDomain)
+
+        assertNotNull(result)
+    }
 })
