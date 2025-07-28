@@ -81,7 +81,6 @@ class SbeMessageXmlWriter {
     private fun loadDefaultSbeTypesElement(): Element {
         val result = this::class.java.classLoader.getResourceAsStream("sbe-common-types.xml")?.use { stream ->
             val factory = DocumentBuilderFactory.newInstance()
-            factory.isValidating = true
             factory.isIgnoringElementContentWhitespace = true
 
             val builder = factory.newDocumentBuilder()
