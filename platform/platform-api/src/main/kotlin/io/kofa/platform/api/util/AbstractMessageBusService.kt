@@ -44,6 +44,10 @@ abstract class AbstractMessageBusService<T : Any>(private val qualifier: String?
         messageSender.send(msg)
     }
 
+    fun initialize() {
+        logger.info { "init message sender: $messageSender" }
+    }
+
     open suspend fun onStartup() {}
 
     open suspend fun onShutdown() {}

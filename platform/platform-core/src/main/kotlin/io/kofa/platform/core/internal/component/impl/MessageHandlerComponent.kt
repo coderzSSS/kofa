@@ -37,6 +37,7 @@ internal class MessageHandlerComponent(
         val result = dispatchers.mapNotNull { dispatcher -> dispatcher as? AbstractMessageBusService<*> }
         result.forEach { handler ->
             handler.setInjectContext(this)
+            handler.initialize()
         }
 
         result

@@ -34,4 +34,9 @@ internal abstract class PlatformMessageHandlerComponent(componentConfig: Compone
     protected val config: Config by inject()
     protected val messageSender: MessageSender<PlatformMessage> by inject()
     protected val logger: Logger by inject()
+
+    override fun initialize() {
+        super.initialize()
+        logger.info { "init message sender $messageSender" }
+    }
 }

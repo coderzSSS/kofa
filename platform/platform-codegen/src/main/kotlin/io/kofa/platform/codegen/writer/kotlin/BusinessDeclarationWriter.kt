@@ -155,6 +155,8 @@ class BusinessDeclarationWriter(private val resolver: Resolver) {
 
                 if (handlerFunctions.isNotEmpty()) {
                     builder.addStatement("val handler: %T by %M()", config.handlerClass.toClassName(), injectMember)
+                    //builder.addStatement("val logger: %T by %M()", Logger::class, injectMember)
+                    builder.addStatement("onStart { handler }")
                 }
 
                 handlerFunctions.forEach { e ->

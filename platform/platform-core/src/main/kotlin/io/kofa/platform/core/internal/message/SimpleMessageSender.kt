@@ -69,4 +69,8 @@ internal class SimpleMessageSender(
             timestampInMillis = System.currentTimeMillis(),
         )
     }
+
+    override fun toString(): String {
+        return "SimpleMessageSender(source='$source', sourceSequence=$sourceSequencer, pendingRetries=${retryQueue.size})"
+    }
 }
