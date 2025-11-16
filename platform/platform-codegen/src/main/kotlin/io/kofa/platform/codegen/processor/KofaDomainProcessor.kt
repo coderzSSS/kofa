@@ -10,7 +10,6 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.ksp.writeTo
-import io.github.classgraph.ClassGraph
 import io.kofa.platform.api.annotation.DomainModule
 import io.kofa.platform.codegen.domain.ResolvedDomain
 import io.kofa.platform.codegen.generator.DefaultDomainGenerator
@@ -75,7 +74,7 @@ class KofaDomainProcessor(private val environment: SymbolProcessorEnvironment) :
         val scanClassPath = environment.getClassPath()
 
         logger.info("kofa scanning classpath: $scanClassPath")
-        val xmlParser = XmlDomainParser(scanClassPath, logger)
+        val xmlParser = XmlDomainParser(scanClassPath, logger, getRootDir())
         val domainXsd = environment.getPath("kofa.domain.xsd")?.let { xsd -> File(xmlParser.resolveUrl(xsd).file) }
 
         val sbeJavaOutputDir = environment.getPath("kofa.sbeJavaOutputDir", "build/generated/ksp/main/java")
@@ -106,6 +105,10 @@ class KofaDomainProcessor(private val environment: SymbolProcessorEnvironment) :
         logger.info("domain generated xml file at $file")
 
         return resolvedDomain
+    }
+
+    private fun getRootDir(): String? {
+        return environment.options["kofa.rootDir"]
     }
 
     private fun SymbolProcessorEnvironment.getPath(option: String, defaultValue: String? = null): String? {

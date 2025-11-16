@@ -14,7 +14,10 @@ import javax.xml.XMLConstants
 import javax.xml.transform.stream.StreamSource
 import javax.xml.validation.SchemaFactory
 
-abstract class AbstractXmlDomainParser(private val logger: KSPLogger?, private val classpath: String? = null) {
+abstract class AbstractXmlDomainParser(
+    private val logger: KSPLogger?,
+    private val classpath: String? = null,
+    private val rootDir: String? = null) {
     protected fun parseDomain(inputStream: InputStream, xsdFile: File? = null): Domain {
         val context = JAXBContext.newInstance(Domain::class.java.packageName, Domain::class.java.classLoader)
 
@@ -53,6 +56,10 @@ abstract class AbstractXmlDomainParser(private val logger: KSPLogger?, private v
     }
 
     fun tryResolveUrl(path: String): URL? {
+        if (Paths.get(path).isAbsolute) {
+            return Paths.get(path).normalize().toUri().toURL()
+        }
+
         // Try to resolve as a classpath resource first
         val classGraph = ClassGraph()
                 .enableAllInfo()
@@ -72,7 +79,7 @@ abstract class AbstractXmlDomainParser(private val logger: KSPLogger?, private v
         return classpathUrl
             ?: // If not found in classpath, try to resolve as a file path
             try {
-                val path = Paths.get(path)
+                val path = if (rootDir != null) Paths.get(rootDir, path) else Paths.get(path)
 
                 if (Files.exists(path)) {
                     path.toUri().toURL()

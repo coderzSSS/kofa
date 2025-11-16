@@ -1,5 +1,6 @@
 package io.kofa.platform.core.internal.component
 
+import io.kofa.platform.api.config.getOrNull
 import io.kofa.platform.api.dsl.BusinessDeclaration
 import io.kofa.platform.api.dsl.model.ComponentDefinition
 import io.kofa.platform.api.inject.InjectContext
@@ -46,7 +47,12 @@ internal class ComponentLoader(
         return getLoadedComponents()
     }
 
-    fun getLoadedComponents(): List<Component> = getSystemComponents() + componentById.values.toList()
+    // high priority will run first
+    fun getLoadedComponents(): List<Component> = getSystemComponents()+
+            componentById.entries
+                .sortedByDescending { componentConfigById[it.key]?.config?.getOrNull<Int>("priority") ?: 0 }
+                .map { it.value }
+                .toList()
 
     private fun getInjectContext(componentType: String): Map<String, () -> InjectContext> {
         return componentConfigById.values.filter { config -> config.type == componentType }.associateBy(

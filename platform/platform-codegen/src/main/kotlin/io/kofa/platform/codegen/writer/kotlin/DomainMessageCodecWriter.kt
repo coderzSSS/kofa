@@ -238,7 +238,11 @@ class DomainMessageCodecWriter {
                 if (needFlatten) {
                     "${valueFieldName.deCap()}${fieldType.typeName.cap()}Encoder";
                 } else {
-                    "${typeEncoderName}.${valueFieldName}"
+                    if (fieldType is GeneratedFieldType && fieldType.isSbeType) {
+                        "${typeEncoderName}.${flattenFieldName(valueFieldName, valueFieldName)}()"
+                    } else {
+                        "${typeEncoderName}.${valueFieldName}"
+                    }
                 }
 
             if (needFlatten && !insideArray) {
@@ -433,7 +437,11 @@ class DomainMessageCodecWriter {
                     }
                     name
                 } else {
-                    "${typeDecoderName}.${valueFieldName}"
+                    if (fieldType is GeneratedFieldType && fieldType.isSbeType) {
+                        "${typeDecoderName}.${flattenFieldName(valueFieldName, valueFieldName)}()"
+                    } else {
+                        "${typeDecoderName}.${valueFieldName}"
+                    }
                 }
 
             var valueVarNameUpdated = valueVarName
@@ -453,6 +461,9 @@ class DomainMessageCodecWriter {
             }
 
             if (fieldType is GeneratedFieldType) {
+                if (fieldType.isSbeType) {
+                    builder.addStatement("var %N: %T? = null ", valueVarName, domain.generatedClassName(fieldType))
+                }
                 fieldType.fields.forEach { entry ->
                     val typeFieldName = if (needFlatten) {
                         flattenFieldName(valueFieldName, fieldType.typeName, entry.key)

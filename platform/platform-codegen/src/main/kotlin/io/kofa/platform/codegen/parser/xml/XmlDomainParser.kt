@@ -9,7 +9,7 @@ import io.kofa.platform.codegen.xsd.generated.Type
 import java.io.File
 import java.io.InputStream
 
-class XmlDomainParser(classpath: String? = null, logger: KSPLogger? = null) : AbstractXmlDomainParser(logger, classpath) {
+class XmlDomainParser(classpath: String? = null, logger: KSPLogger? = null, rootDir: String? = null) : AbstractXmlDomainParser(logger, classpath, rootDir) {
     fun parse(xmlPath: String, xsdFile: File? = null): PlainDomain {
         return resolveInputStream(xmlPath).use {
             parse(it, xsdFile)
